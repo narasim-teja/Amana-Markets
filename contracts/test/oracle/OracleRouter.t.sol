@@ -9,7 +9,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract OracleRouterTest is TestSetup {
     // ===================== Adapter management =====================
 
-    function test_addAdapter() public {
+    function test_addAdapter() public view {
         // Setup already added 4 adapters, verify them
         address[] memory registered = router.getAdapters();
         assertEq(registered.length, 4);
