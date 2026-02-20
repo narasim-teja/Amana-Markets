@@ -1,32 +1,90 @@
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { TrendingUp, Shield, Wallet, Activity } from 'lucide-react';
+
 export default function HomePage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-dark-950">
-      <div className="text-center space-y-6">
-        <h1 className="text-5xl font-display text-gold mb-4">
-          ADI Commodities Marketplace
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl">
-          Institutional-grade decentralized commodities trading platform
-        </p>
-        <div className="flex gap-4 justify-center mt-8">
-          <a
-            href="/trade"
-            className="px-6 py-3 btn-gold rounded-lg font-semibold text-lg"
-          >
-            Start Trading
-          </a>
-          <a
-            href="/admin"
-            className="px-6 py-3 btn-outline-gold rounded-lg font-semibold text-lg"
-          >
-            Admin Dashboard
-          </a>
+    <div className="min-h-[80vh] flex flex-col items-center justify-center">
+      <div className="text-center space-y-8 max-w-4xl">
+        {/* Hero Section */}
+        <div className="space-y-4">
+          <h1 className="text-6xl md:text-7xl font-display text-gold mb-6">
+            ADI Commodities
+          </h1>
+          <p className="text-2xl md:text-3xl text-muted-foreground">
+            Institutional-Grade Commodity Trading
+          </p>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Trade tokenized gold, silver, and oil with real-time oracle pricing on the ADI
+            blockchain
+          </p>
         </div>
-        <div className="mt-12 text-sm text-muted-foreground">
-          <p>Chain ID: 99999 (ADI Testnet)</p>
-          <p className="mt-2">Core infrastructure initialized ✓</p>
+
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
+          <Link href="/trade">
+            <Button size="lg" className="btn-gold text-lg px-8 py-6">
+              <TrendingUp className="h-5 w-5 mr-2" />
+              Start Trading
+            </Button>
+          </Link>
+          <Link href="/vault">
+            <Button size="lg" variant="outline" className="text-lg px-8 py-6">
+              <Wallet className="h-5 w-5 mr-2" />
+              Provide Liquidity
+            </Button>
+          </Link>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20">
+          <Card className="premium-card">
+            <CardContent className="pt-6 text-center">
+              <Activity className="h-10 w-10 text-gold mx-auto mb-4" />
+              <h3 className="font-display text-xl mb-2">Real-Time Pricing</h3>
+              <p className="text-sm text-muted-foreground">
+                Multi-oracle aggregation from Pyth, DIA, and RedStone
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="premium-card">
+            <CardContent className="pt-6 text-center">
+              <Shield className="h-10 w-10 text-gold mx-auto mb-4" />
+              <h3 className="font-display text-xl mb-2">Institutional Security</h3>
+              <p className="text-sm text-muted-foreground">
+                KYC whitelisting and compliance-first architecture
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="premium-card">
+            <CardContent className="pt-6 text-center">
+              <Wallet className="h-10 w-10 text-gold mx-auto mb-4" />
+              <h3 className="font-display text-xl mb-2">Earn Fees</h3>
+              <p className="text-sm text-muted-foreground">
+                Provide liquidity to the vault and earn trading fees
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Network Info */}
+        <div className="mt-16 p-4 bg-dark-800/30 rounded-lg border border-dark-700">
+          <p className="text-sm text-muted-foreground">
+            <span className="text-gold font-semibold">ADI Testnet</span> • Chain ID: 99999 •{' '}
+            <a
+              href="https://explorer.ab.testnet.adifoundation.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gold hover:underline"
+            >
+              Block Explorer ↗
+            </a>
+          </p>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

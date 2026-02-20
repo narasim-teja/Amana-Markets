@@ -141,7 +141,16 @@ body {
 
 /* Stat Card */
 .stat-card {
-  @apply premium-card flex flex-col gap-2;
+  background: color-mix(in srgb, var(--dark-900) 50%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--dark-700);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 /* Number Display */

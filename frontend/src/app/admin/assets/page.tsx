@@ -44,7 +44,8 @@ export default function AssetsManagementPage() {
   const { data: assetsData, refetch: refetchAssets } = useQuery({
     queryKey: ['assets'],
     queryFn: async () => {
-      const assets = await apiClient.getAssets();
+      const response = await apiClient.getAssets();
+      const assets = response.assets;
       return assets.map((asset: any) => enrichAssetWithMetadata(asset));
     },
     refetchInterval: REFETCH_INTERVAL_SLOW,

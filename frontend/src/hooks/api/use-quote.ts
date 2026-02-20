@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { usePublicClient } from '@privy-io/react-auth';
+import { createPublicClient, http, parseUnits } from 'viem';
 import { CONTRACTS } from '@/lib/contracts';
-import { parseUnits } from 'viem';
+import { adiTestnet } from '@/lib/chain';
 
 interface QuoteResult {
   totalCost: bigint;
@@ -27,10 +27,8 @@ export function useQuote(
     error: null,
   });
 
-  const publicClient = usePublicClient();
-
   useEffect(() => {
-    if (!assetId || !amount || parseFloat(amount) <= 0 || !publicClient) {
+    if (!assetId || !amount || parseFloat(amount) <= 0) {
       setQuote({
         totalCost: 0n,
         effectivePrice: 0n,
@@ -46,6 +44,11 @@ export function useQuote(
 
     const timeoutId = setTimeout(async () => {
       try {
+        const publicClient = createPublicClient({
+          chain: adiTestnet,
+          transport: http(),
+        });
+
         // Convert amount to commodity decimals (8 decimals)
         const amountWei = parseUnits(amount, 8);
 
@@ -81,7 +84,7 @@ export function useQuote(
     }, debounceMs);
 
     return () => clearTimeout(timeoutId);
-  }, [assetId, isBuy, amount, debounceMs, publicClient]);
+  }, [assetId, isBuy, amount, debounceMs]);
 
   return quote;
 }

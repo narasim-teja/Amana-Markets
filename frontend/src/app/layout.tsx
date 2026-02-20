@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { DM_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/providers';
+import { MainNav } from '@/components/navigation/main-nav';
+import { Toaster } from '@/components/ui/sonner';
 
 /**
  * Premium Institutional Fonts
@@ -43,7 +45,11 @@ export default function RootLayout({
       <body
         className={`${dmSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <MainNav />
+          <main className="container mx-auto px-4 py-8">{children}</main>
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

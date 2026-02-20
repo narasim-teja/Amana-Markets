@@ -61,7 +61,8 @@ export default function AnalyticsPage() {
   const { data: assetsData } = useQuery({
     queryKey: ['assets'],
     queryFn: async () => {
-      const assets = await apiClient.getAssets();
+      const response = await apiClient.getAssets();
+      const assets = response.assets;
       return assets.map((asset: any) => enrichAssetWithMetadata(asset));
     },
     refetchInterval: REFETCH_INTERVAL_SLOW,
@@ -91,8 +92,8 @@ export default function AnalyticsPage() {
     : [];
 
   // Prepare volume chart data
-  const volumeChartData = volumeData?.history
-    ? volumeData.history.map((item: any) => ({
+  const volumeChartData = volumeData?.timeSeries
+    ? volumeData.timeSeries.map((item: any) => ({
         time: new Date(item.date).getTime() / 1000,
         value: parseFloat(item.volume) / 1e6, // Convert to mAED
       }))
@@ -132,13 +133,13 @@ export default function AnalyticsPage() {
             />
             <StatsCard
               title="Total Fees"
-              value={`${formatAED(parseFloat(feesData?.total || '0'))} mAED`}
+              value={`${formatAED((feesData?.total || '0').toString())} mAED`}
               icon={DollarSign}
               loading={feesLoading}
             />
             <StatsCard
               title="Unique Traders"
-              value={volumeData?.uniqueTraders?.toString() || '0'}
+              value={topTraders.length.toString()}
               icon={Users}
               loading={volumeLoading}
             />
