@@ -143,21 +143,25 @@ export function PriceChart({
       return;
     }
 
+    // Shift UTC timestamps to local timezone for display
+    const tzOffsetSec = new Date().getTimezoneOffset() * 60;
+
     // Deduplicate and ensure strictly ascending time order
     const seen = new Set<number>();
     const lineData: LineData[] = [];
     for (const d of data) {
-      if (!seen.has(d.time)) {
-        seen.add(d.time);
-        lineData.push({ time: d.time as UTCTimestamp, value: d.price });
+      const localTime = d.time - tzOffsetSec;
+      if (!seen.has(localTime)) {
+        seen.add(localTime);
+        lineData.push({ time: localTime as UTCTimestamp, value: d.price });
       }
     }
     lineData.sort((a, b) => (a.time as number) - (b.time as number));
 
     seriesRef.current.setData(lineData);
 
-    // Set visible range to match the selected timeframe
-    const now = Math.floor(Date.now() / 1000);
+    // Set visible range to match the selected timeframe (in local time)
+    const now = Math.floor(Date.now() / 1000) - tzOffsetSec;
     const rangeStart = now - RANGE_SECONDS[range];
     chartRef.current.timeScale().setVisibleRange({
       from: rangeStart as UTCTimestamp,
@@ -169,8 +173,9 @@ export function PriceChart({
   useEffect(() => {
     if (!seriesRef.current || !latestPoint) return;
 
+    const tzOffsetSec = new Date().getTimezoneOffset() * 60;
     seriesRef.current.update({
-      time: latestPoint.time as UTCTimestamp,
+      time: (latestPoint.time - tzOffsetSec) as UTCTimestamp,
       value: latestPoint.price,
     });
   }, [latestPoint]);

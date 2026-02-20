@@ -18,7 +18,6 @@ import {
   type AssetMetadata,
   type ApiAsset,
 } from '@/lib/assets';
-import { useLivePrice } from '@/hooks/api/use-prices';
 import { useQuote } from '@/hooks/api/use-quote';
 import { usePosition } from '@/hooks/api/use-position';
 import { useUserStatus } from '@/hooks/blockchain/use-user-status';
@@ -28,8 +27,6 @@ import { CONTRACTS } from '@/lib/contracts';
 import {
   formatAED,
   formatCommodityPrice,
-  formatRelativeTime,
-  isPriceStale,
 } from '@/lib/format';
 import { REFETCH_INTERVAL_SLOW } from '@/lib/constants';
 import {
@@ -38,7 +35,6 @@ import {
   TrendingDown,
   Wallet,
   AlertCircle,
-  CheckCircle,
   ArrowDown,
   Coins,
   BarChart3,
@@ -82,9 +78,6 @@ export default function TradePage() {
   if (assets.length > 0 && !selectedAssetId) {
     setSelectedAssetId(assets[0].assetId);
   }
-
-  // Fetch live price
-  const { price: livePrice } = useLivePrice(selectedAssetId);
 
   // Get quote
   const quote = useQuote(selectedAssetId, mode === 'buy', amount);
@@ -216,10 +209,7 @@ export default function TradePage() {
     }
   };
 
-  const medianPrice = livePrice?.median ? parseFloat(livePrice.median) : 0;
-  const isStale = livePrice?.lastUpdated
-    ? isPriceStale(livePrice.lastUpdated)
-    : true;
+  const chartPrice = latestPoint?.price ?? 0;
   const hasPosition = position && parseFloat(position.commodityBalance) > 0;
 
   // Chart color - override near-black Oil color for visibility on dark bg
@@ -227,7 +217,7 @@ export default function TradePage() {
     selectedAsset?.color === '#1A1A1A'
       ? '#4A9EFF'
       : selectedAsset?.color ?? '#C9A96E';
-  const displayPrice = hoveredPrice ?? medianPrice;
+  const displayPrice = hoveredPrice ?? chartPrice;
 
   // Buy: outputAmount is tokensOut (8 dec). Sell: outputAmount is stablecoinOut (6 dec).
   const outputFormatted =
@@ -269,24 +259,10 @@ export default function TradePage() {
                   <span className="text-sm text-muted-foreground">
                     {selectedAsset?.name ?? 'Commodity'} / USD
                   </span>
-                  <Badge
-                    variant={isStale ? 'destructive' : 'default'}
-                    className="text-xs gap-1 ml-2"
-                  >
-                    {isStale ? (
-                      <>
-                        <AlertCircle className="h-3 w-3" /> Stale
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-3 w-3" /> Live
-                      </>
-                    )}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                  {livePrice && (
-                    <span>Updated {formatRelativeTime(livePrice.lastUpdated)}</span>
+                  {chartPrice > 0 && (
+                    <Badge variant="default" className="text-xs gap-1 ml-2">
+                      <Activity className="h-3 w-3" /> Live
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -539,7 +515,7 @@ export default function TradePage() {
                     <span className="text-muted-foreground">Rate</span>
                     <span className="font-mono text-xs text-foreground">
                       1 {selectedAsset?.tokenSymbol} ={' '}
-                      {medianPrice.toLocaleString(undefined, {
+                      {chartPrice.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{' '}
@@ -671,11 +647,11 @@ export default function TradePage() {
                       Mkt Value
                     </div>
                     <div className="font-mono text-sm font-semibold">
-                      {medianPrice > 0
+                      {chartPrice > 0
                         ? `$${(
                             parseFloat(
                               formatUnits(BigInt(position.commodityBalance), 8)
-                            ) * medianPrice
+                            ) * chartPrice
                           ).toFixed(2)}`
                         : '--'}
                     </div>
