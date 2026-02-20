@@ -51,14 +51,32 @@ export default function UsersManagementPage() {
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
+  // Fetch all known users from indexer (includes whitelisted addresses that haven't traded)
+  const { data: usersData, refetch: refetchUsers } = useQuery({
+    queryKey: ['users', 'all'],
+    queryFn: () => apiClient.getUsers(),
+    refetchInterval: REFETCH_INTERVAL_SLOW,
+  });
+
   const { writeContract: executeWhitelist, isLoading: isWhitelisting } = useContractWrite();
   const { writeContract: executeBlacklist, isLoading: isBlacklisting } = useContractWrite();
 
-  // Extract unique traders from trades
-  const users = tradesData?.trades
+  // Build user status map from indexed events
+  const userStatusMap = new Map<string, string>();
+  if (usersData?.users) {
+    for (const u of usersData.users) {
+      userStatusMap.set(u.address.toLowerCase(), u.action);
+    }
+  }
+
+  // Merge trades-based users with indexed user events
+  const tradeAddresses = new Set<string>();
+  const tradeUsers = tradesData?.trades
     ? Array.from(new Set(tradesData.trades.map((t: Trade) => t.trader)))
         .map((address) => {
+          tradeAddresses.add(address.toLowerCase());
           const userTrades = tradesData.trades.filter((t: Trade) => t.trader === address);
+          const status = userStatusMap.get(address.toLowerCase());
           return {
             address,
             tradeCount: userTrades.length,
@@ -66,12 +84,24 @@ export default function UsersManagementPage() {
               (sum: number, t: Trade) => sum + parseFloat(t.stablecoin_amount),
               0
             ),
-            // Status will be fetched on-chain or from API if available
-            isWhitelisted: true, // Default assumption
-            isBlacklisted: false,
+            isWhitelisted: status === 'whitelisted' || (!status),
+            isBlacklisted: status === 'blacklisted',
           };
         })
     : [];
+
+  // Add whitelisted/blacklisted users that haven't traded yet
+  const nonTradeUsers = (usersData?.users || [])
+    .filter((u) => !tradeAddresses.has(u.address.toLowerCase()))
+    .map((u) => ({
+      address: u.address,
+      tradeCount: 0,
+      totalVolume: 0,
+      isWhitelisted: u.action === 'whitelisted',
+      isBlacklisted: u.action === 'blacklisted',
+    }));
+
+  const users = [...tradeUsers, ...nonTradeUsers];
 
   // Filter users
   const filteredUsers = users.filter((user) => {
@@ -114,7 +144,7 @@ export default function UsersManagementPage() {
       });
 
       setBatchAddresses('');
-      refetchTrades();
+      refetchTrades(); refetchUsers();
     } catch (error) {
       console.error('Batch whitelist failed:', error);
     }
@@ -129,7 +159,7 @@ export default function UsersManagementPage() {
         args: [[address]],
       });
 
-      refetchTrades();
+      refetchTrades(); refetchUsers();
     } catch (error) {
       console.error('Whitelist failed:', error);
     }
@@ -144,7 +174,7 @@ export default function UsersManagementPage() {
         args: [address],
       });
 
-      refetchTrades();
+      refetchTrades(); refetchUsers();
     } catch (error) {
       console.error('Blacklist failed:', error);
     }

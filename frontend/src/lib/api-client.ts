@@ -163,6 +163,16 @@ export const apiClient = {
   // ==================== USERS ====================
 
   /**
+   * Get all known users from indexed events
+   */
+  async getUsers() {
+    const response = await fetch(`${API_BASE_URL}/users`);
+    return handleResponse<{
+      users: { address: string; action: string; last_updated: number }[];
+    }>(response);
+  },
+
+  /**
    * Check if address is whitelisted
    */
   async getUserWhitelistStatus(address: string) {

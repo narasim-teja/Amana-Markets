@@ -5,16 +5,59 @@ import { usePathname } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 import { useIsAdmin } from '@/hooks/blockchain/use-admin';
-import { TrendingUp, BarChart3, Wallet, Shield, Menu } from 'lucide-react';
+import { useAdiBalance } from '@/hooks/blockchain/use-adi-balance';
+import {
+  TrendingUp,
+  BarChart3,
+  Wallet,
+  Shield,
+  Menu,
+  Copy,
+  ExternalLink,
+  LogOut,
+  Check,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 export function MainNav() {
   const pathname = usePathname();
   const { authenticated, login, logout, user } = usePrivy();
   const { isAdmin } = useIsAdmin();
+  const { balance, isLoading: balanceLoading } = useAdiBalance();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const walletAddress = user?.wallet?.address ?? '';
+  const truncatedAddress = walletAddress
+    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+    : '';
+
+  const copyAddress = async () => {
+    if (!walletAddress) return;
+    await navigator.clipboard.writeText(walletAddress);
+    setCopied(true);
+    toast.success('Address copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const openExplorer = () => {
+    if (!walletAddress) return;
+    const explorerUrl =
+      process.env.NEXT_PUBLIC_EXPLORER_URL ||
+      'https://explorer.ab.testnet.adifoundation.ai';
+    window.open(`${explorerUrl}/address/${walletAddress}`, '_blank');
+  };
 
   const navItems = [
     {
@@ -96,17 +139,64 @@ export function MainNav() {
           {/* Wallet Button */}
           <div className="flex items-center gap-3">
             {authenticated ? (
-              <Button
-                onClick={logout}
-                variant="outline"
-                className="hidden md:flex items-center gap-2"
-              >
-                <Wallet className="h-4 w-4" />
-                <span className="font-mono text-sm">
-                  {user?.wallet?.address?.slice(0, 6)}...
-                  {user?.wallet?.address?.slice(-4)}
-                </span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="hidden md:flex items-center gap-2.5 pr-3 pl-3 h-10 border-dark-600 hover:border-gold/40 hover:bg-dark-800 transition-all"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="font-mono text-sm text-foreground">
+                        {truncatedAddress}
+                      </span>
+                    </div>
+                    <div className="w-px h-4 bg-dark-600" />
+                    <span className="text-sm font-medium text-gold">
+                      {balanceLoading ? '...' : balance} ADI
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[280px]">
+                  <DropdownMenuLabel>Connected Wallet</DropdownMenuLabel>
+                  <div className="px-3 py-2">
+                    <div className="font-mono text-xs text-muted-foreground break-all leading-relaxed">
+                      {walletAddress}
+                    </div>
+                  </div>
+                  <div className="px-3 pb-2">
+                    <div className="flex items-center justify-between bg-dark-900/60 rounded-lg px-3 py-2.5">
+                      <span className="text-xs text-muted-foreground">
+                        Balance
+                      </span>
+                      <span className="text-sm font-semibold text-gold">
+                        {balanceLoading ? '...' : balance} ADI
+                      </span>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={copyAddress}>
+                    {copied ? (
+                      <Check className="h-4 w-4 text-emerald-400" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                    {copied ? 'Copied!' : 'Copy Address'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={openExplorer}>
+                    <ExternalLink className="h-4 w-4" />
+                    View on Explorer
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={logout}
+                    className="text-red-400 focus:text-red-300"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Disconnect
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Button onClick={login} className="btn-gold hidden md:flex">
                 <Wallet className="h-4 w-4 mr-2" />
@@ -171,11 +261,55 @@ export function MainNav() {
                 </Link>
               )}
 
+              {/* Mobile Wallet Section */}
               <div className="mt-4 px-4">
                 {authenticated ? (
-                  <Button onClick={logout} variant="outline" className="w-full">
-                    Disconnect
-                  </Button>
+                  <div className="space-y-3">
+                    <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-xs text-muted-foreground">
+                          Connected
+                        </span>
+                      </div>
+                      <div className="font-mono text-sm text-foreground mb-1">
+                        {truncatedAddress}
+                      </div>
+                      <div className="text-sm font-semibold text-gold">
+                        {balanceLoading ? '...' : balance} ADI
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1 text-sm"
+                        onClick={copyAddress}
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4 mr-1.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="h-4 w-4 mr-1.5" />
+                        )}
+                        {copied ? 'Copied' : 'Copy'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1 text-sm"
+                        onClick={openExplorer}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-1.5" />
+                        Explorer
+                      </Button>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="w-full text-red-400 hover:text-red-300 hover:border-red-400/30"
+                      onClick={logout}
+                    >
+                      <LogOut className="h-4 w-4 mr-1.5" />
+                      Disconnect
+                    </Button>
+                  </div>
                 ) : (
                   <Button onClick={login} className="btn-gold w-full">
                     Connect Wallet
