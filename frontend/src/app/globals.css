@@ -1,0 +1,277 @@
+@import "tailwindcss";
+
+/**
+ * Premium Institutional Theme for ADI Commodities Marketplace
+ * Design: Dark theme with gold accents, Bloomberg/Terminal aesthetic
+ */
+
+:root {
+  /* Dark backgrounds - Premium institutional palette */
+  --background: #0A0A0F;
+  --foreground: #F0EDE6;
+  --card: #12121A;
+  --card-foreground: #F0EDE6;
+  --popover: #12121A;
+  --popover-foreground: #F0EDE6;
+
+  /* Gold accents - Primary brand color */
+  --primary: #C9A96E;
+  --primary-foreground: #0A0A0F;
+
+  /* Secondary colors */
+  --secondary: #1C1C26;
+  --secondary-foreground: #F0EDE6;
+  --muted: #1C1C26;
+  --muted-foreground: #8A8A9A;
+  --accent: #1C1C26;
+  --accent-foreground: #F0EDE6;
+
+  /* Semantic colors */
+  --destructive: #EF4444;
+  --destructive-foreground: #F0EDE6;
+  --success: #10B981;
+  --warning: #F59E0B;
+
+  /* Borders and inputs */
+  --border: #1E1E2E;
+  --input: #1E1E2E;
+  --ring: #C9A96E;
+  --radius: 0.5rem;
+
+  /* Dark theme variations */
+  --dark-950: #0A0A0F;
+  --dark-900: #13131A;
+  --dark-800: #1C1C26;
+  --dark-700: #252532;
+
+  /* Gold palette */
+  --gold: #C9A96E;
+  --gold-light: #E8D5A3;
+  --gold-dark: #B89550;
+}
+
+@theme inline {
+  /* Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Custom colors */
+  --color-dark-950: var(--dark-950);
+  --color-dark-900: var(--dark-900);
+  --color-dark-800: var(--dark-800);
+  --color-dark-700: var(--dark-700);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-dark: var(--gold-dark);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  /* Fonts - Will be set by Next.js font loader */
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-display: var(--font-instrument-serif), Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), Consolas, monospace;
+
+  /* Border radius */
+  --radius: var(--radius);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--dark-900);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--dark-700);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-dark);
+}
+
+/* Premium Card Style */
+.premium-card {
+  background: color-mix(in srgb, var(--dark-900) 50%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--dark-700);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.premium-card:hover {
+  border-color: color-mix(in srgb, var(--gold) 30%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--gold) 15%, transparent);
+}
+
+/* Stat Card */
+.stat-card {
+  @apply premium-card flex flex-col gap-2;
+}
+
+/* Number Display */
+.number-display {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Price Colors */
+.price-positive {
+  color: var(--success);
+}
+
+.price-negative {
+  color: var(--destructive);
+}
+
+/* Gold Button */
+.btn-gold {
+  background: var(--gold);
+  color: var(--dark-950);
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.btn-gold:hover {
+  background: var(--gold-light);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--gold) 25%, transparent);
+}
+
+.btn-gold:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Gold Outline Button */
+.btn-outline-gold {
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  background: transparent;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-outline-gold:hover {
+  background: var(--gold);
+  color: var(--dark-950);
+}
+
+/* Glow Effects */
+.shadow-glow-gold {
+  box-shadow: 0 0 20px color-mix(in srgb, var(--gold) 15%, transparent);
+}
+
+.shadow-glow-gold-lg {
+  box-shadow: 0 0 30px color-mix(in srgb, var(--gold) 25%, transparent);
+}
+
+/* Animation */
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Focus Styles */
+*:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Loading Spinner */
+.spinner {
+  border: 3px solid var(--dark-700);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Table Styles */
+.premium-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.premium-table thead {
+  border-bottom: 1px solid var(--dark-700);
+}
+
+.premium-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+.premium-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--dark-800);
+}
+
+.premium-table tbody tr:hover {
+  background: color-mix(in srgb, var(--dark-800) 50%, transparent);
+}
+
+/* Utility Classes */
+.text-gold {
+  color: var(--gold);
+}
+
+.bg-gold {
+  background: var(--gold);
+}
+
+.border-gold {
+  border-color: var(--gold);
+}
