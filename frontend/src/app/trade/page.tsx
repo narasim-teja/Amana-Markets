@@ -48,6 +48,7 @@ import { MintMaedDialog } from '@/components/mint-maed-dialog';
 import { PriceChart } from '@/components/charts/price-chart';
 import { TimeframeSelector } from '@/components/charts/timeframe-selector';
 import { usePriceChart } from '@/hooks/api/use-price-chart';
+import { useFxRate } from '@/hooks/blockchain/use-fx-rate';
 
 type TradeMode = 'buy' | 'sell';
 
@@ -108,6 +109,9 @@ export default function TradePage() {
     setRange,
   } = usePriceChart(selectedAssetId);
   const [hoveredPrice, setHoveredPrice] = useState<number | null>(null);
+
+  // On-chain FX rate (USD → AED)
+  const { rate: fxRate } = useFxRate();
 
   if (!ready || (authenticated && statusLoading)) {
     return (
@@ -235,8 +239,14 @@ export default function TradePage() {
     }
   };
 
-  const chartPrice = latestPoint?.price ?? 0;
+  const chartPrice = (latestPoint?.price ?? 0) * fxRate;
   const hasPosition = position && parseFloat(position.commodityBalance) > 0;
+
+  // Convert chart data from USD to AED
+  const chartDataAed = chartData.map((d) => ({ ...d, price: d.price * fxRate }));
+  const latestPointAed = latestPoint
+    ? { ...latestPoint, price: latestPoint.price * fxRate }
+    : null;
 
   // Chart color - override near-black Oil color for visibility on dark bg
   const chartColor =
@@ -276,14 +286,14 @@ export default function TradePage() {
               <div>
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono text-3xl font-bold text-foreground">
-                    $
                     {displayPrice.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    })}
+                    })}{' '}
+                    <span className="text-lg text-muted-foreground">AED</span>
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    {selectedAsset?.name ?? 'Commodity'} / USD
+                    {selectedAsset?.name ?? 'Commodity'} / AED
                   </span>
                   {chartPrice > 0 && (
                     <Badge variant="default" className="text-xs gap-1 ml-2">
@@ -310,8 +320,8 @@ export default function TradePage() {
                 </div>
               ) : (
                 <PriceChart
-                  data={chartData}
-                  latestPoint={latestPoint}
+                  data={chartDataAed}
+                  latestPoint={latestPointAed}
                   color={chartColor}
                   height={400}
                   range={range}
@@ -674,11 +684,11 @@ export default function TradePage() {
                     </div>
                     <div className="font-mono text-sm font-semibold">
                       {chartPrice > 0
-                        ? `$${(
+                        ? `${(
                             parseFloat(
                               formatUnits(BigInt(position.commodityBalance), 18)
                             ) * chartPrice
-                          ).toFixed(2)}`
+                          ).toFixed(2)} AED`
                         : '--'}
                     </div>
                   </div>
