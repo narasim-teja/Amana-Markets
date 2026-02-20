@@ -4,9 +4,9 @@ import { PriceData } from '../../lib/types';
 import { parsePrice } from '../../lib/utils';
 
 interface DIAResponse {
-  Symbol: string;
+  Ticker: string;
   Price: number;
-  Time: string; // ISO timestamp
+  Timestamp: string; // ISO timestamp
 }
 
 export async function fetchDIAPrices(): Promise<PriceData[]> {
@@ -26,7 +26,7 @@ export async function fetchDIAPrices(): Promise<PriceData[]> {
       prices.push({
         assetId: asset.id,
         price: parsePrice(adjustedPrice),
-        timestamp: Math.floor(new Date(data.Time).getTime() / 1000),
+        timestamp: Math.floor(new Date(data.Timestamp).getTime() / 1000),
         source: 'DIA',
         decimals: 8
       });

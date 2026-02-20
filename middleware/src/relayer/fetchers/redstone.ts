@@ -4,10 +4,10 @@ import { PriceData } from '../../lib/types';
 import { parsePrice } from '../../lib/utils';
 
 interface RedStoneResponse {
-  [symbol: string]: Array<{
+  [symbol: string]: {
     value: number;
     timestamp: number; // milliseconds
-  }>;
+  };
 }
 
 export async function fetchRedStonePrices(): Promise<PriceData[]> {
@@ -19,7 +19,7 @@ export async function fetchRedStonePrices(): Promise<PriceData[]> {
     const data: RedStoneResponse = await response.json();
 
     return ASSETS.map(asset => {
-      const priceData = data[asset.redstoneSymbol]?.[0];
+      const priceData = data[asset.redstoneSymbol];
       if (!priceData) return null;
 
       return {

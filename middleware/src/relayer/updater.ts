@@ -1,7 +1,8 @@
 import { publicClient, walletClient } from '../lib/viem';
 import { CONTRACTS } from '../config/contracts';
 import { PriceData } from '../lib/types';
-import { isStale, PRICE_STALENESS_SECONDS } from '../config/oracles';
+import { PRICE_STALENESS_SECONDS } from '../config/oracles';
+import { isStale } from '../lib/utils';
 
 const ADAPTER_MAP: Record<string, any> = {
   'Pyth': CONTRACTS.PythAdapter,
@@ -51,8 +52,13 @@ export async function updatePriceOnChain(priceData: PriceData): Promise<void> {
 
     console.log(`✅ Updated ${priceData.source} price for asset ${priceData.assetId.slice(0, 10)}... | tx: ${hash}`);
 
-    // Wait for confirmation
-    await publicClient.waitForTransactionReceipt({ hash });
+    // Wait for confirmation (with timeout handling)
+    try {
+      await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 }); // 30 second timeout
+      console.log(`  ✓ Confirmed`);
+    } catch (timeoutError) {
+      console.warn(`  ⚠️  Confirmation timeout (tx may still succeed later)`);
+    }
   } catch (error) {
     console.error(`❌ Failed to update ${priceData.source} price:`, error);
   }

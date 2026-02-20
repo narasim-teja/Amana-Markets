@@ -20,7 +20,19 @@ export async function fetchPythPrices(): Promise<PriceData[]> {
 
   try {
     const response = await fetch(url);
-    const data: PythResponse = await response.json();
+
+    // Check if response is JSON
+    const text = await response.text();
+    if (!text.startsWith('{')) {
+      console.warn('⚠️  Pyth API returned non-JSON response:', text.slice(0, 100));
+      return [];
+    }
+
+    const data: PythResponse = JSON.parse(text);
+
+    if (!data.parsed || data.parsed.length === 0) {
+      return [];
+    }
 
     return data.parsed.map(item => {
       const asset = ASSETS.find(a => a.pythFeedId === item.id);
