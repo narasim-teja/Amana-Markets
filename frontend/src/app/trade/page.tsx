@@ -49,6 +49,9 @@ import { toast } from 'sonner';
 import { formatUnits, parseUnits } from 'viem';
 import { cn } from '@/lib/utils';
 import { MintMaedDialog } from '@/components/mint-maed-dialog';
+import { PriceChart } from '@/components/charts/price-chart';
+import { TimeframeSelector } from '@/components/charts/timeframe-selector';
+import { usePriceChart } from '@/hooks/api/use-price-chart';
 
 type TradeMode = 'buy' | 'sell';
 
@@ -103,6 +106,16 @@ export default function TradePage() {
 
   // mAED balance
   const { balance: maedBalance, isLoading: maedLoading } = useMaedBalance();
+
+  // Chart data
+  const {
+    data: chartData,
+    latestPoint,
+    isLoading: chartLoading,
+    range,
+    setRange,
+  } = usePriceChart(selectedAssetId);
+  const [hoveredPrice, setHoveredPrice] = useState<number | null>(null);
 
   if (!authenticated) {
     return (
@@ -200,6 +213,13 @@ export default function TradePage() {
     : true;
   const hasPosition = position && parseFloat(position.commodityBalance) > 0;
 
+  // Chart color - override near-black Oil color for visibility on dark bg
+  const chartColor =
+    selectedAsset?.color === '#1A1A1A'
+      ? '#4A9EFF'
+      : selectedAsset?.color ?? '#C9A96E';
+  const displayPrice = hoveredPrice ?? medianPrice;
+
   // Buy: outputAmount is tokensOut (8 dec). Sell: outputAmount is stablecoinOut (6 dec).
   const outputFormatted =
     quote.outputAmount > BigInt(0)
@@ -237,106 +257,363 @@ export default function TradePage() {
         </Badge>
       </div>
 
-      {/* Asset Selector Chips */}
-      <div className="flex gap-3 overflow-x-auto pb-1">
-        {assets.map((asset) => {
-          const isSelected = asset.assetId === selectedAssetId;
-          return (
-            <button
-              key={asset.assetId}
-              onClick={() => {
-                setSelectedAssetId(asset.assetId);
-                setAmount('');
-              }}
-              className={cn(
-                'flex items-center gap-3 px-5 py-3 rounded-xl border transition-all whitespace-nowrap min-w-fit',
-                isSelected
-                  ? 'border-gold/50 bg-gold/10 shadow-glow-gold'
-                  : 'border-dark-700 bg-dark-900/50 hover:border-dark-600 hover:bg-dark-800/50'
-              )}
-            >
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: `${asset.color}20` }}
-              >
-                <Activity
-                  className="h-4 w-4"
-                  style={{ color: asset.color }}
-                />
-              </div>
-              <div className="text-left">
-                <div
-                  className={cn(
-                    'text-sm font-semibold',
-                    isSelected ? 'text-gold' : 'text-foreground'
-                  )}
-                >
-                  {asset.name}
-                </div>
-                <div className="text-xs text-muted-foreground font-mono">
-                  {asset.tokenSymbol}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Main Grid */}
+      {/* Main Grid - Chart Left, Trading Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column - Price + Balance + Position */}
-        <div className="lg:col-span-4 space-y-6 order-2 lg:order-1">
-          {/* Live Price */}
-          {selectedAsset && (
-            <div className="premium-card">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-muted-foreground">
-                  Market Price
-                </span>
-                <Badge
-                  variant={isStale ? 'destructive' : 'default'}
-                  className="text-xs gap-1"
-                >
-                  {isStale ? (
-                    <>
-                      <AlertCircle className="h-3 w-3" /> Stale
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-3 w-3" /> Live
-                    </>
+        {/* Left Column - Chart Panel */}
+        <div className="lg:col-span-8 space-y-4 order-2 lg:order-1">
+          {/* Chart Card */}
+          <div className="premium-card">
+            {/* Chart Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono text-3xl font-bold text-foreground">
+                    $
+                    {displayPrice.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {selectedAsset?.name ?? 'Commodity'} / USD
+                  </span>
+                  <Badge
+                    variant={isStale ? 'destructive' : 'default'}
+                    className="text-xs gap-1 ml-2"
+                  >
+                    {isStale ? (
+                      <>
+                        <AlertCircle className="h-3 w-3" /> Stale
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-3 w-3" /> Live
+                      </>
+                    )}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                  {livePrice && (
+                    <span>Updated {formatRelativeTime(livePrice.lastUpdated)}</span>
                   )}
-                </Badge>
+                </div>
+              </div>
+              <TimeframeSelector selected={range} onChange={setRange} />
+            </div>
+
+            {/* Price Chart */}
+            <div className="h-[400px]">
+              {chartLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-muted-foreground text-sm">Loading chart...</div>
+                </div>
+              ) : chartData.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-muted-foreground">
+                    <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No price data available yet</p>
+                  </div>
+                </div>
+              ) : (
+                <PriceChart
+                  data={chartData}
+                  latestPoint={latestPoint}
+                  color={chartColor}
+                  height={400}
+                  range={range}
+                  onCrosshairMove={(price) => setHoveredPrice(price)}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Asset Selector Chips */}
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {assets.map((asset) => {
+              const isSelected = asset.assetId === selectedAssetId;
+              return (
+                <button
+                  key={asset.assetId}
+                  onClick={() => {
+                    setSelectedAssetId(asset.assetId);
+                    setAmount('');
+                  }}
+                  className={cn(
+                    'flex items-center gap-3 px-5 py-3 rounded-xl border transition-all whitespace-nowrap min-w-fit',
+                    isSelected
+                      ? 'border-gold/50 bg-gold/10 shadow-glow-gold'
+                      : 'border-dark-700 bg-dark-900/50 hover:border-dark-600 hover:bg-dark-800/50'
+                  )}
+                >
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: `${asset.color}20` }}
+                  >
+                    <Activity
+                      className="h-4 w-4"
+                      style={{ color: asset.color }}
+                    />
+                  </div>
+                  <div className="text-left">
+                    <div
+                      className={cn(
+                        'text-sm font-semibold',
+                        isSelected ? 'text-gold' : 'text-foreground'
+                      )}
+                    >
+                      {asset.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground font-mono">
+                      {asset.tokenSymbol}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right Column - Trading Form + Balance + Position */}
+        <div className="lg:col-span-4 space-y-4 order-1 lg:order-2">
+          {/* Trading Form */}
+          <div className="premium-card">
+            {/* Buy / Sell Toggle */}
+            <div className="flex rounded-xl bg-dark-900 p-1 mb-5">
+              <button
+                onClick={() => setMode('buy')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all',
+                  mode === 'buy'
+                    ? 'bg-emerald-500/15 text-emerald-400 shadow-[inset_0_0_20px_rgba(16,185,129,0.1)]'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <TrendingUp className="h-4 w-4" />
+                Buy
+              </button>
+              <button
+                onClick={() => setMode('sell')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all',
+                  mode === 'sell'
+                    ? 'bg-red-500/15 text-red-400 shadow-[inset_0_0_20px_rgba(239,68,68,0.1)]'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <TrendingDown className="h-4 w-4" />
+                Sell
+              </button>
+            </div>
+
+            {/* Trade Form */}
+            <div className="space-y-3">
+              {/* TOP INPUT — what the user types */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm text-muted-foreground">
+                    {mode === 'buy' ? 'You pay' : 'You sell'}
+                  </span>
+                  {mode === 'buy' && (
+                    <span className="text-xs text-muted-foreground">
+                      Bal: {maedLoading ? '...' : maedBalance}
+                    </span>
+                  )}
+                  {mode === 'sell' && hasPosition && selectedAsset && (
+                    <button
+                      onClick={() =>
+                        setAmount(
+                          formatUnits(BigInt(position.commodityBalance), 8)
+                        )
+                      }
+                      className="text-xs text-gold hover:text-gold-light transition-colors cursor-pointer"
+                    >
+                      Max: {formatCommodityPrice(position.commodityBalance)}
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    step={mode === 'buy' ? '1' : '0.01'}
+                    min="0"
+                    className="text-xl font-mono h-14 pr-28 bg-dark-900 border-dark-700 focus:border-gold/50"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    {mode === 'buy' ? (
+                      <>
+                        <div className="w-5 h-5 rounded-full bg-gold/20 flex items-center justify-center">
+                          <Coins className="h-3 w-3 text-gold" />
+                        </div>
+                        <span className="text-xs font-semibold text-foreground">
+                          mAED
+                        </span>
+                      </>
+                    ) : (
+                      selectedAsset && (
+                        <>
+                          <div
+                            className="w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{
+                              backgroundColor: `${selectedAsset.color}20`,
+                            }}
+                          >
+                            <Activity
+                              className="h-3 w-3"
+                              style={{ color: selectedAsset.color }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold text-foreground">
+                            {selectedAsset.tokenSymbol}
+                          </span>
+                        </>
+                      )
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="font-mono text-4xl font-bold text-foreground">
-                  $
-                  {medianPrice.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
+              {/* Arrow Separator */}
+              <div className="flex justify-center">
+                <div className="w-8 h-8 rounded-full bg-dark-900 border border-dark-700 flex items-center justify-center">
+                  <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{selectedAsset.name} / USD</span>
-                {livePrice && (
-                  <>
-                    <span className="text-dark-600">|</span>
-                    <span>{formatRelativeTime(livePrice.lastUpdated)}</span>
-                  </>
+
+              {/* BOTTOM — computed output (read-only) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm text-muted-foreground">
+                    You receive
+                  </span>
+                </div>
+                <div className="relative">
+                  <div className="h-14 flex items-center px-4 bg-dark-900 border border-dark-700 rounded-md">
+                    <span
+                      className={cn(
+                        'text-xl font-mono',
+                        outputFormatted
+                          ? 'text-foreground'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      {quote.isLoading
+                        ? '...'
+                        : quote.error
+                          ? 'Error'
+                          : outputFormatted ?? '0.00'}
+                    </span>
+                  </div>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    {mode === 'buy' ? (
+                      selectedAsset && (
+                        <>
+                          <div
+                            className="w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{
+                              backgroundColor: `${selectedAsset.color}20`,
+                            }}
+                          >
+                            <Activity
+                              className="h-3 w-3"
+                              style={{ color: selectedAsset.color }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold text-foreground">
+                            {selectedAsset.tokenSymbol}
+                          </span>
+                        </>
+                      )
+                    ) : (
+                      <>
+                        <div className="w-5 h-5 rounded-full bg-gold/20 flex items-center justify-center">
+                          <Coins className="h-3 w-3 text-gold" />
+                        </div>
+                        <span className="text-xs font-semibold text-foreground">
+                          mAED
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quote Details */}
+              {amount && parseFloat(amount) > 0 && outputFormatted && (
+                <div className="bg-dark-900/60 rounded-xl p-3 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Rate</span>
+                    <span className="font-mono text-xs text-foreground">
+                      1 {selectedAsset?.tokenSymbol} ={' '}
+                      {medianPrice.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      mAED
+                    </span>
+                  </div>
+                  {quote.spreadBps > BigInt(0) && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Spread</span>
+                      <span className="font-mono text-xs text-foreground">
+                        {(Number(quote.spreadBps) / 100).toFixed(2)}%
+                      </span>
+                    </div>
+                  )}
+                  {quote.fee > BigInt(0) && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fee</span>
+                      <span className="font-mono text-xs text-foreground">
+                        {parseFloat(formatUnits(quote.fee, 6)).toFixed(2)} mAED
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Execute Button */}
+              <Button
+                onClick={handleTrade}
+                disabled={
+                  !amount ||
+                  parseFloat(amount) <= 0 ||
+                  quote.isLoading ||
+                  isTrading ||
+                  !!quote.error
+                }
+                className={cn(
+                  'w-full h-12 text-sm font-semibold rounded-xl transition-all cursor-pointer',
+                  mode === 'buy'
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+                    : 'bg-red-500 hover:bg-red-400 text-white shadow-[0_0_20px_rgba(239,68,68,0.2)]'
                 )}
-              </div>
+                size="lg"
+              >
+                {isTrading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    {mode === 'buy' ? 'Buy' : 'Sell'}{' '}
+                    {selectedAsset?.tokenSymbol}
+                  </div>
+                )}
+              </Button>
             </div>
-          )}
+          </div>
 
           {/* Wallet Balance */}
           <div className="premium-card">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Coins className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  Your Balance
+                  Balance
                 </span>
               </div>
               <button
@@ -346,10 +623,10 @@ export default function TradePage() {
                 + Buy mAED
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">mAED</span>
-                <span className="font-mono text-lg font-semibold text-foreground">
+                <span className="font-mono text-base font-semibold text-foreground">
                   {maedLoading ? '...' : maedBalance}
                 </span>
               </div>
@@ -358,46 +635,37 @@ export default function TradePage() {
                   <span className="text-sm text-muted-foreground">
                     {selectedAsset.tokenSymbol}
                   </span>
-                  <span className="font-mono text-lg font-semibold text-foreground">
+                  <span className="font-mono text-base font-semibold text-foreground">
                     {formatCommodityPrice(position.commodityBalance)}
                   </span>
                 </div>
               )}
-              <Button
-                onClick={() => setMintDialogOpen(true)}
-                variant="outline"
-                className="w-full mt-1 border-gold/30 text-gold hover:bg-gold/10 hover:text-gold-light cursor-pointer"
-                size="sm"
-              >
-                <Coins className="h-3.5 w-3.5 mr-1.5" />
-                Buy mAED
-              </Button>
             </div>
           </div>
 
           {/* Position */}
           <div className="premium-card">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-3">
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                Your Position
+                Position
               </span>
             </div>
             {hasPosition && selectedAsset ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">
                     Holdings
                   </div>
-                  <div className="font-mono text-2xl font-bold">
+                  <div className="font-mono text-xl font-bold">
                     {formatCommodityPrice(position.commodityBalance)}
-                    <span className="text-sm font-normal text-muted-foreground ml-2">
+                    <span className="text-xs font-normal text-muted-foreground ml-1.5">
                       {selectedAsset.tokenSymbol}
                     </span>
                   </div>
                 </div>
                 <div className="h-px bg-dark-700" />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">
                       Cost Basis
@@ -423,255 +691,11 @@ export default function TradePage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-6 text-muted-foreground">
-                <Wallet className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <div className="text-center py-4 text-muted-foreground">
+                <Wallet className="h-6 w-6 mx-auto mb-1.5 opacity-30" />
                 <p className="text-sm">No position yet</p>
-                <p className="text-xs mt-1 opacity-60">
-                  Buy to start building a position
-                </p>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Right Column - Trading Form */}
-        <div className="lg:col-span-8 order-1 lg:order-2">
-          <div className="premium-card">
-            {/* Buy / Sell Toggle */}
-            <div className="flex rounded-xl bg-dark-900 p-1 mb-6">
-              <button
-                onClick={() => setMode('buy')}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold transition-all',
-                  mode === 'buy'
-                    ? 'bg-emerald-500/15 text-emerald-400 shadow-[inset_0_0_20px_rgba(16,185,129,0.1)]'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <TrendingUp className="h-4 w-4" />
-                Buy
-              </button>
-              <button
-                onClick={() => setMode('sell')}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-semibold transition-all',
-                  mode === 'sell'
-                    ? 'bg-red-500/15 text-red-400 shadow-[inset_0_0_20px_rgba(239,68,68,0.1)]'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <TrendingDown className="h-4 w-4" />
-                Sell
-              </button>
-            </div>
-
-            {/* Trade Form */}
-            <div className="space-y-4">
-              {/* TOP INPUT — what the user types */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">
-                    {mode === 'buy' ? 'You pay' : 'You sell'}
-                  </span>
-                  {mode === 'buy' && (
-                    <span className="text-xs text-muted-foreground">
-                      Balance: {maedLoading ? '...' : maedBalance} mAED
-                    </span>
-                  )}
-                  {mode === 'sell' && hasPosition && selectedAsset && (
-                    <button
-                      onClick={() =>
-                        setAmount(
-                          formatUnits(BigInt(position.commodityBalance), 8)
-                        )
-                      }
-                      className="text-xs text-gold hover:text-gold-light transition-colors cursor-pointer"
-                    >
-                      Max: {formatCommodityPrice(position.commodityBalance)}
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    step={mode === 'buy' ? '1' : '0.01'}
-                    min="0"
-                    className="text-2xl font-mono h-16 pr-36 bg-dark-900 border-dark-700 focus:border-gold/50"
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    {mode === 'buy' ? (
-                      <>
-                        <div className="w-6 h-6 rounded-full bg-gold/20 flex items-center justify-center">
-                          <Coins className="h-3 w-3 text-gold" />
-                        </div>
-                        <span className="text-sm font-semibold text-foreground">
-                          mAED
-                        </span>
-                      </>
-                    ) : (
-                      selectedAsset && (
-                        <>
-                          <div
-                            className="w-6 h-6 rounded-full flex items-center justify-center"
-                            style={{
-                              backgroundColor: `${selectedAsset.color}20`,
-                            }}
-                          >
-                            <Activity
-                              className="h-3 w-3"
-                              style={{ color: selectedAsset.color }}
-                            />
-                          </div>
-                          <span className="text-sm font-semibold text-foreground">
-                            {selectedAsset.tokenSymbol}
-                          </span>
-                        </>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Arrow Separator */}
-              <div className="flex justify-center">
-                <div className="w-10 h-10 rounded-full bg-dark-900 border border-dark-700 flex items-center justify-center">
-                  <ArrowDown className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-
-              {/* BOTTOM — computed output (read-only) */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">
-                    You receive
-                  </span>
-                </div>
-                <div className="relative">
-                  <div className="h-16 flex items-center px-4 bg-dark-900 border border-dark-700 rounded-md">
-                    <span
-                      className={cn(
-                        'text-2xl font-mono',
-                        outputFormatted
-                          ? 'text-foreground'
-                          : 'text-muted-foreground'
-                      )}
-                    >
-                      {quote.isLoading
-                        ? '...'
-                        : quote.error
-                          ? 'Error'
-                          : outputFormatted ?? '0.00'}
-                    </span>
-                  </div>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    {mode === 'buy' ? (
-                      selectedAsset && (
-                        <>
-                          <div
-                            className="w-6 h-6 rounded-full flex items-center justify-center"
-                            style={{
-                              backgroundColor: `${selectedAsset.color}20`,
-                            }}
-                          >
-                            <Activity
-                              className="h-3 w-3"
-                              style={{ color: selectedAsset.color }}
-                            />
-                          </div>
-                          <span className="text-sm font-semibold text-foreground">
-                            {selectedAsset.tokenSymbol}
-                          </span>
-                        </>
-                      )
-                    ) : (
-                      <>
-                        <div className="w-6 h-6 rounded-full bg-gold/20 flex items-center justify-center">
-                          <Coins className="h-3 w-3 text-gold" />
-                        </div>
-                        <span className="text-sm font-semibold text-foreground">
-                          mAED
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Quote Details */}
-              {amount && parseFloat(amount) > 0 && outputFormatted && (
-                <div className="bg-dark-900/60 rounded-xl p-4 space-y-2.5 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Market Rate</span>
-                    <span className="font-mono text-foreground">
-                      1 {selectedAsset?.tokenSymbol} ={' '}
-                      {medianPrice.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}{' '}
-                      mAED
-                    </span>
-                  </div>
-                  {quote.spreadBps > BigInt(0) && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Spread</span>
-                      <span className="font-mono text-foreground">
-                        {(Number(quote.spreadBps) / 100).toFixed(2)}%
-                      </span>
-                    </div>
-                  )}
-                  {quote.fee > BigInt(0) && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Fee</span>
-                      <span className="font-mono text-foreground">
-                        {parseFloat(formatUnits(quote.fee, 6)).toFixed(2)} mAED
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Execute Button */}
-              <Button
-                onClick={handleTrade}
-                disabled={
-                  !amount ||
-                  parseFloat(amount) <= 0 ||
-                  quote.isLoading ||
-                  isTrading ||
-                  !!quote.error
-                }
-                className={cn(
-                  'w-full h-14 text-base font-semibold rounded-xl transition-all cursor-pointer',
-                  mode === 'buy'
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]'
-                    : 'bg-red-500 hover:bg-red-400 text-white shadow-[0_0_20px_rgba(239,68,68,0.2)]'
-                )}
-                size="lg"
-              >
-                {isTrading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Processing...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4" />
-                    {mode === 'buy' ? 'Buy' : 'Sell'}{' '}
-                    {selectedAsset?.tokenSymbol}
-                    {outputFormatted && (
-                      <span className="opacity-70">
-                        {mode === 'buy'
-                          ? `— receive ${outputFormatted}`
-                          : `— receive ${outputFormatted} mAED`}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </Button>
-            </div>
           </div>
         </div>
       </div>

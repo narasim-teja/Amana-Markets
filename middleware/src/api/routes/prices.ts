@@ -141,6 +141,41 @@ app.get('/median/:assetId', async (c) => {
   });
 });
 
+// GET /prices/:assetId/history - Historical price data for charts
+app.get('/:assetId/history', async (c) => {
+  try {
+    const assetId = c.req.param('assetId');
+    const range = c.req.query('range') || '24h';
+    const source = c.req.query('source') || 'Pyth';
+
+    const rangeConfig: Record<string, { seconds: number; interval: number }> = {
+      '1h':  { seconds: 3600,    interval: 60 },
+      '24h': { seconds: 86400,   interval: 300 },
+      '7d':  { seconds: 604800,  interval: 1800 },
+      '30d': { seconds: 2592000, interval: 7200 },
+    };
+
+    const config = rangeConfig[range] || rangeConfig['24h'];
+    const fromTimestamp = Math.floor(Date.now() / 1000) - config.seconds;
+
+    // Use a single oracle source for clean chart data
+    const prices = db.query(`
+      SELECT
+        (timestamp / ?1) * ?1 AS time,
+        AVG(CAST(price AS REAL) / 1e8) AS price
+      FROM prices
+      WHERE asset_id = ?2 AND timestamp >= ?3 AND source = ?4
+      GROUP BY (timestamp / ?1)
+      ORDER BY time ASC
+    `).all(config.interval, assetId, fromTimestamp, source);
+
+    return c.json({ assetId, range, interval: config.interval, source, prices });
+  } catch (error) {
+    console.error('Error fetching price history:', error);
+    return c.json({ error: 'Failed to fetch price history' }, 500);
+  }
+});
+
 // GET /prices/:assetId - Latest prices for specific asset (generic, comes last)
 app.get('/:assetId', async (c) => {
   const assetId = c.req.param('assetId');

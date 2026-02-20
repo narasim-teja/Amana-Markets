@@ -103,6 +103,19 @@ export const apiClient = {
     return handleResponse<{ prices: any[] }>(response);
   },
 
+  /**
+   * Get historical price data for charts (time-bucketed averages)
+   */
+  async getPriceChartData(assetId: string, range: '1h' | '24h' | '7d' | '30d' = '24h') {
+    const response = await fetch(`${API_BASE_URL}/prices/${assetId}/history?range=${range}`);
+    return handleResponse<{
+      assetId: string;
+      range: string;
+      interval: number;
+      prices: Array<{ time: number; price: number; samples: number }>;
+    }>(response);
+  },
+
   // ==================== TRADES ====================
 
   /**

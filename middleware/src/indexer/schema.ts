@@ -17,6 +17,7 @@ export function initializeDatabase(db: Database) {
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_prices_asset ON prices(asset_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_prices_timestamp ON prices(timestamp)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_prices_asset_timestamp ON prices(asset_id, timestamp)`);
 
   // Trades table
   db.run(`
