@@ -1,0 +1,23 @@
+{
+  "name": "adi-marketplace-middleware",
+  "version": "1.0.0",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "relayer": "bun run src/relayer.ts",
+    "indexer": "bun run src/indexer.ts",
+    "api": "bun run src/api.ts",
+    "dev": "bun run src/relayer.ts & bun run src/indexer.ts & bun run src/api.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "hono": "^4.12.0",
+    "viem": "^2.46.2"
+  }
+}
