@@ -94,7 +94,7 @@ export default function VaultPage() {
       const shares = await publicClient.readContract({
         address: CONTRACTS.LiquidityVault.address as `0x${string}`,
         abi: CONTRACTS.LiquidityVault.abi,
-        functionName: 'balanceOf',
+        functionName: 'lpShares',
         args: [walletAddress as `0x${string}`],
       });
 
@@ -116,7 +116,7 @@ export default function VaultPage() {
       const supply = await publicClient.readContract({
         address: CONTRACTS.LiquidityVault.address as `0x${string}`,
         abi: CONTRACTS.LiquidityVault.abi,
-        functionName: 'totalSupply',
+        functionName: 'totalShares',
         args: [],
       });
 
@@ -151,7 +151,7 @@ export default function VaultPage() {
         address: CONTRACTS.LiquidityVault.address,
         abi: CONTRACTS.LiquidityVault.abi,
         functionName: 'deposit',
-        args: [amountWei, walletAddress],
+        args: [amountWei],
       });
 
       setDepositAmount('');
@@ -175,8 +175,8 @@ export default function VaultPage() {
       await executeWithdraw({
         address: CONTRACTS.LiquidityVault.address,
         abi: CONTRACTS.LiquidityVault.abi,
-        functionName: 'redeem',
-        args: [sharesWei, walletAddress, walletAddress],
+        functionName: 'withdraw',
+        args: [sharesWei],
       });
 
       setWithdrawShares('');

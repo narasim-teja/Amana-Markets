@@ -22,12 +22,14 @@ import { apiClient } from '@/lib/api-client';
 import { enrichAssetWithMetadata, type ApiAsset, type AssetMetadata, getAssetMetadata } from '@/lib/assets';
 import type { Trade } from '@/types/api';
 import { usePosition } from '@/hooks/api/use-position';
+import { useLivePrice } from '@/hooks/api/use-prices';
 import {
   formatAED,
   formatCommodityPrice,
   formatCompactNumber,
   formatRelativeTime,
 } from '@/lib/format';
+import { formatUnits } from 'viem';
 import { REFETCH_INTERVAL_FAST, REFETCH_INTERVAL_SLOW } from '@/lib/constants';
 import {
   Wallet,
@@ -129,10 +131,7 @@ export default function PortfolioPage() {
             <Wallet className="h-4 w-4 text-gold" />
           </CardHeader>
           <CardContent>
-            <div className="number-display text-muted-foreground">Coming Soon</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Requires live price integration
-            </p>
+            <div className="number-display">&mdash;</div>
           </CardContent>
         </Card>
       </div>
@@ -174,7 +173,7 @@ export default function PortfolioPage() {
                 {userTrades.map((trade: Trade) => {
                   const isBuy = !!trade.is_buy;
                   const assetMeta = getAssetMetadata(trade.asset_id);
-                  const assetLabel = assetMeta?.symbol || 'Unknown';
+                  const assetLabel = assetMeta?.name || assetMeta?.symbol || 'Unknown';
 
                   return (
                     <TableRow key={trade.id}>
@@ -237,8 +236,7 @@ function HoldingsTable({ assets }: { assets: AssetMetadata[] }) {
           <TableHead>Asset</TableHead>
           <TableHead className="text-right">Holdings</TableHead>
           <TableHead className="text-right">Cost Basis (mAED)</TableHead>
-          <TableHead className="text-right">Current Value (mAED)</TableHead>
-          <TableHead className="text-right">P&L</TableHead>
+          <TableHead className="text-right">Market Value (USD)</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -252,8 +250,13 @@ function HoldingsTable({ assets }: { assets: AssetMetadata[] }) {
 
 function HoldingRow({ asset }: { asset: AssetMetadata }) {
   const { data: position } = usePosition(asset.assetId, asset.tokenAddress || null);
+  const { price: livePrice } = useLivePrice(asset.assetId);
 
   const hasPosition = position && parseFloat(position.commodityBalance) > 0;
+  // median is already formatted as USD string e.g. "5073.23000000"
+  const oraclePrice = livePrice?.median ? parseFloat(livePrice.median) : 0;
+  const holdings = hasPosition ? parseFloat(formatUnits(BigInt(position.commodityBalance), 18)) : 0;
+  const currentValueUsd = holdings * oraclePrice;
 
   if (!hasPosition) {
     return (
@@ -268,11 +271,10 @@ function HoldingRow({ asset }: { asset: AssetMetadata }) {
             </div>
             <div>
               <p className="font-medium">{asset.name}</p>
-              <p className="text-xs text-muted-foreground font-mono">{asset.symbol}</p>
+              <p className="text-xs text-muted-foreground font-mono">{asset.tokenSymbol}</p>
             </div>
           </div>
         </TableCell>
-        <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
         <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
         <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
         <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
@@ -292,7 +294,7 @@ function HoldingRow({ asset }: { asset: AssetMetadata }) {
           </div>
           <div>
             <p className="font-medium">{asset.name}</p>
-            <p className="text-xs text-muted-foreground font-mono">{asset.symbol}</p>
+            <p className="text-xs text-muted-foreground font-mono">{asset.tokenSymbol}</p>
           </div>
         </div>
       </TableCell>
@@ -302,11 +304,8 @@ function HoldingRow({ asset }: { asset: AssetMetadata }) {
       <TableCell className="text-right font-mono">
         {formatAED(position.costBasis)}
       </TableCell>
-      <TableCell className="text-right font-mono text-muted-foreground">
-        Coming Soon
-      </TableCell>
-      <TableCell className="text-right">
-        <span className="text-muted-foreground">&mdash;</span>
+      <TableCell className="text-right font-mono">
+        {oraclePrice > 0 ? `$${currentValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '\u2014'}
       </TableCell>
     </TableRow>
   );
