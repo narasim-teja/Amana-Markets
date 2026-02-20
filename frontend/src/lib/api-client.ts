@@ -111,8 +111,9 @@ export const apiClient = {
     return handleResponse<{
       assetId: string;
       range: string;
-      interval: number;
-      prices: Array<{ time: number; price: number; samples: number }>;
+      interval: string;
+      source: string;
+      prices: Array<{ time: number; price: number }>;
     }>(response);
   },
 

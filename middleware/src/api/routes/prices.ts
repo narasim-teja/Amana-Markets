@@ -4,6 +4,7 @@ import { publicClient } from '../../lib/viem';
 import { CONTRACTS } from '../../config/contracts';
 import { getLivePrices } from '../../services/livePrices';
 import { formatPrice } from '../../lib/utils';
+import { getAssetById } from '../../config/assets';
 
 const app = new Hono();
 
@@ -141,35 +142,69 @@ app.get('/median/:assetId', async (c) => {
   });
 });
 
-// GET /prices/:assetId/history - Historical price data for charts
+// Pyth TradingView symbol mapping per asset
+const PYTH_TV_SYMBOLS: Record<string, string> = {
+  XAU: 'Metal.XAU/USD',
+  XAG: 'Metal.XAG/USD',
+  WTI: 'Commodities.USOILSPOT',
+};
+
+// GET /prices/:assetId/history - Historical price data from Pyth Benchmarks API
 app.get('/:assetId/history', async (c) => {
   try {
-    const assetId = c.req.param('assetId');
+    const assetId = c.req.param('assetId') as `0x${string}`;
     const range = c.req.query('range') || '24h';
-    const source = c.req.query('source') || 'Pyth';
 
-    const rangeConfig: Record<string, { seconds: number; interval: number }> = {
-      '1h':  { seconds: 3600,    interval: 60 },
-      '24h': { seconds: 86400,   interval: 300 },
-      '7d':  { seconds: 604800,  interval: 1800 },
-      '30d': { seconds: 2592000, interval: 7200 },
+    const asset = getAssetById(assetId);
+    if (!asset) {
+      return c.json({ error: 'Asset not found' }, 404);
+    }
+
+    const pythSymbol = PYTH_TV_SYMBOLS[asset.symbol];
+    if (!pythSymbol) {
+      return c.json({ error: 'No chart data available for this asset' }, 404);
+    }
+
+    // Map range to Pyth TradingView resolution and time window
+    const rangeConfig: Record<string, { resolution: string; seconds: number }> = {
+      '1h':  { resolution: '1',   seconds: 3600 },
+      '24h': { resolution: '5',   seconds: 86400 },
+      '7d':  { resolution: '30',  seconds: 604800 },
+      '30d': { resolution: '120', seconds: 2592000 },
     };
 
     const config = rangeConfig[range] || rangeConfig['24h'];
-    const fromTimestamp = Math.floor(Date.now() / 1000) - config.seconds;
+    const now = Math.floor(Date.now() / 1000);
+    const from = now - config.seconds;
 
-    // Use a single oracle source for clean chart data
-    const prices = db.query(`
-      SELECT
-        (timestamp / ?1) * ?1 AS time,
-        AVG(CAST(price AS REAL) / 1e8) AS price
-      FROM prices
-      WHERE asset_id = ?2 AND timestamp >= ?3 AND source = ?4
-      GROUP BY (timestamp / ?1)
-      ORDER BY time ASC
-    `).all(config.interval, assetId, fromTimestamp, source);
+    const url = `https://benchmarks.pyth.network/v1/shims/tradingview/history?symbol=${encodeURIComponent(pythSymbol)}&resolution=${config.resolution}&from=${from}&to=${now}`;
+    const response = await fetch(url);
 
-    return c.json({ assetId, range, interval: config.interval, source, prices });
+    if (!response.ok) {
+      throw new Error(`Pyth API returned ${response.status}`);
+    }
+
+    const data = await response.json() as {
+      s: string;
+      t: number[];
+      o: number[];
+      h: number[];
+      l: number[];
+      c: number[];
+      v: number[];
+    };
+
+    if (data.s !== 'ok' || !data.t || data.t.length === 0) {
+      return c.json({ assetId, range, interval: config.resolution, source: 'Pyth', prices: [] });
+    }
+
+    // Use close prices for the chart
+    const prices = data.t.map((time, i) => ({
+      time,
+      price: data.c[i],
+    }));
+
+    return c.json({ assetId, range, interval: config.resolution, source: 'Pyth', prices });
   } catch (error) {
     console.error('Error fetching price history:', error);
     return c.json({ error: 'Failed to fetch price history' }, 500);
