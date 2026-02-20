@@ -1,0 +1,312 @@
+'use client';
+
+/**
+ * Portfolio Page
+ * View all holdings, PnL, and trade history
+ */
+
+import { useQuery } from '@tanstack/react-query';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { apiClient } from '@/lib/api-client';
+import { enrichAssetWithMetadata } from '@/lib/assets';
+import { usePosition } from '@/hooks/api/use-position';
+import {
+  formatAED,
+  formatCommodityPrice,
+  formatCompactNumber,
+  formatRelativeTime,
+} from '@/lib/format';
+import { REFETCH_INTERVAL_FAST, REFETCH_INTERVAL_SLOW } from '@/lib/constants';
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  BarChart3,
+  ArrowUpRight,
+  ArrowDownRight,
+} from 'lucide-react';
+
+export default function PortfolioPage() {
+  const { authenticated, login } = usePrivy();
+  const { wallets } = useWallets();
+  const walletAddress = wallets[0]?.address;
+
+  // Fetch assets
+  const { data: assetsData } = useQuery({
+    queryKey: ['assets'],
+    queryFn: async () => {
+      const assets = await apiClient.getAssets();
+      return assets.map((asset: any) => enrichAssetWithMetadata(asset));
+    },
+    refetchInterval: REFETCH_INTERVAL_SLOW,
+  });
+
+  // Fetch user trade history
+  const { data: tradesData } = useQuery({
+    queryKey: ['trades', walletAddress],
+    queryFn: () => apiClient.getTrades({ trader: walletAddress, limit: 50 }),
+    enabled: !!walletAddress,
+    refetchInterval: REFETCH_INTERVAL_FAST,
+  });
+
+  const assets = assetsData || [];
+
+  if (!authenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+        <div className="text-center">
+          <h2 className="text-3xl font-display text-gold mb-4">View Your Portfolio</h2>
+          <p className="text-muted-foreground mb-8">
+            Connect your wallet to see your holdings and trade history
+          </p>
+          <Button onClick={login} size="lg" className="btn-gold">
+            <Wallet className="h-4 w-4 mr-2" />
+            Connect Wallet
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const userTrades = tradesData?.trades || [];
+  const totalVolume = userTrades.reduce(
+    (sum, trade: any) => sum + parseFloat(trade.stablecoin_amount),
+    0
+  );
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-display text-gold mb-2">Portfolio</h2>
+        <p className="text-muted-foreground font-mono">{walletAddress}</p>
+      </div>
+
+      {/* Portfolio Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="premium-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Trades
+            </CardTitle>
+            <Activity className="h-4 w-4 text-gold" />
+          </CardHeader>
+          <CardContent>
+            <div className="number-display">{userTrades.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="premium-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Volume
+            </CardTitle>
+            <BarChart3 className="h-4 w-4 text-gold" />
+          </CardHeader>
+          <CardContent>
+            <div className="number-display">
+              {formatCompactNumber(totalVolume / 1e6)} mAED
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="premium-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Portfolio Value
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-gold" />
+          </CardHeader>
+          <CardContent>
+            <div className="number-display text-muted-foreground">Coming Soon</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Requires live price integration
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Holdings Table */}
+      <Card className="premium-card">
+        <CardHeader>
+          <CardTitle className="text-xl font-display">Holdings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <HoldingsTable assets={assets} />
+        </CardContent>
+      </Card>
+
+      {/* Trade History */}
+      <Card className="premium-card">
+        <CardHeader>
+          <CardTitle className="text-xl font-display">Trade History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {userTrades.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No trades yet</p>
+              <p className="text-sm mt-2">Start trading to build your history</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Asset</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Value (mAED)</TableHead>
+                  <TableHead className="text-right">Time</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {userTrades.map((trade: any) => (
+                  <TableRow key={trade.id}>
+                    <TableCell className="font-medium">
+                      {trade.asset_symbol || 'Unknown'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={trade.is_buy ? 'default' : 'destructive'}
+                        className="gap-1"
+                      >
+                        {trade.is_buy ? (
+                          <>
+                            <ArrowUpRight className="h-3 w-3" />
+                            Buy
+                          </>
+                        ) : (
+                          <>
+                            <ArrowDownRight className="h-3 w-3" />
+                            Sell
+                          </>
+                        )}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatCommodityPrice(
+                        (parseFloat(trade.commodity_amount) / 1e8).toString()
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatAED((parseFloat(trade.stablecoin_amount) / 1e6).toString())}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">
+                      {formatRelativeTime(trade.timestamp)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function HoldingsTable({ assets }: { assets: any[] }) {
+  const { wallets } = useWallets();
+  const walletAddress = wallets[0]?.address;
+
+  if (!assets || assets.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <p>No assets available</p>
+      </div>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Asset</TableHead>
+          <TableHead className="text-right">Holdings</TableHead>
+          <TableHead className="text-right">Cost Basis (mAED)</TableHead>
+          <TableHead className="text-right">Current Value (mAED)</TableHead>
+          <TableHead className="text-right">P&L</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {assets.map((asset) => (
+          <HoldingRow key={asset.assetId} asset={asset} />
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function HoldingRow({ asset }: { asset: any }) {
+  const { data: position } = usePosition(asset.assetId, asset.tokenAddress);
+
+  const hasPosition = position && parseFloat(position.commodityBalance) > 0;
+
+  if (!hasPosition) {
+    return (
+      <TableRow>
+        <TableCell>
+          <div className="flex items-center gap-3">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: `${asset.color}20` }}
+            >
+              <Activity className="h-4 w-4" style={{ color: asset.color }} />
+            </div>
+            <div>
+              <p className="font-medium">{asset.name}</p>
+              <p className="text-xs text-muted-foreground font-mono">{asset.symbol}</p>
+            </div>
+          </div>
+        </TableCell>
+        <TableCell className="text-right text-muted-foreground">—</TableCell>
+        <TableCell className="text-right text-muted-foreground">—</TableCell>
+        <TableCell className="text-right text-muted-foreground">—</TableCell>
+        <TableCell className="text-right text-muted-foreground">—</TableCell>
+      </TableRow>
+    );
+  }
+
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: `${asset.color}20` }}
+          >
+            <Activity className="h-4 w-4" style={{ color: asset.color }} />
+          </div>
+          <div>
+            <p className="font-medium">{asset.name}</p>
+            <p className="text-xs text-muted-foreground font-mono">{asset.symbol}</p>
+          </div>
+        </div>
+      </TableCell>
+      <TableCell className="text-right font-mono">
+        {formatCommodityPrice(position.commodityBalance)}
+      </TableCell>
+      <TableCell className="text-right font-mono">
+        {formatAED(position.costBasis)}
+      </TableCell>
+      <TableCell className="text-right font-mono text-muted-foreground">
+        Coming Soon
+      </TableCell>
+      <TableCell className="text-right">
+        <span className="text-muted-foreground">—</span>
+      </TableCell>
+    </TableRow>
+  );
+}
