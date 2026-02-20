@@ -38,7 +38,7 @@ export interface AssetMetadata {
   icon: string; // Path to icon SVG
   color: string; // Accent color for UI
   description: string; // Short description
-  decimals: number; // Token decimals (always 8 for commodities)
+  decimals: number; // Token decimals (always 18 for commodities)
   tokenAddress?: `0x${string}`; // ERC20 token address (loaded from API)
 
   // API-provided properties
@@ -62,7 +62,7 @@ export const ASSET_METADATA: Record<string, AssetMetadata> = {
     icon: '/commodities/gold.svg',
     color: '#C9A96E', // Gold color matching brand
     description: 'Precious metal - Troy ounce',
-    decimals: 8,
+    decimals: 18,
     tokenAddress: process.env.NEXT_PUBLIC_XGOLD as `0x${string}`,
   },
   [ASSET_IDS.SILVER]: {
@@ -73,7 +73,7 @@ export const ASSET_METADATA: Record<string, AssetMetadata> = {
     icon: '/commodities/silver.svg',
     color: '#C0C0C0', // Silver color
     description: 'Precious metal - Troy ounce',
-    decimals: 8,
+    decimals: 18,
     tokenAddress: process.env.NEXT_PUBLIC_XSILVER as `0x${string}`,
   },
   [ASSET_IDS.OIL]: {
@@ -84,7 +84,7 @@ export const ASSET_METADATA: Record<string, AssetMetadata> = {
     icon: '/commodities/oil.svg',
     color: '#1A1A1A', // Dark for oil
     description: 'West Texas Intermediate - Barrel',
-    decimals: 8,
+    decimals: 18,
     tokenAddress: process.env.NEXT_PUBLIC_XOIL as `0x${string}`,
   },
 };
@@ -124,7 +124,7 @@ export function enrichAssetWithMetadata(apiAsset: ApiAsset): AssetMetadata {
       icon: '/commodities/default.svg',
       color: '#888888',
       description: apiAsset.name || '',
-      decimals: 8,
+      decimals: 18,
       tokenAddress: apiAsset.token_address,
     };
   }

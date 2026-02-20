@@ -17,7 +17,7 @@ export interface Trade {
   asset_id: string;
   is_buy: number; // SQLite returns 0 or 1
   stablecoin_amount: string; // Raw BigInt as string (6 decimals)
-  token_amount: string; // Raw BigInt as string (8 decimals)
+  token_amount: string; // Raw BigInt as string (18 decimals)
   oracle_price: string;
   effective_price: string;
   spread_bps: string;

@@ -41,7 +41,8 @@ import {
   Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatUnits, parseUnits } from 'viem';
+import { createPublicClient, http, formatUnits, parseUnits, maxUint256 } from 'viem';
+import { adiTestnet } from '@/lib/chain';
 import { cn } from '@/lib/utils';
 import { MintMaedDialog } from '@/components/mint-maed-dialog';
 import { PriceChart } from '@/components/charts/price-chart';
@@ -186,6 +187,30 @@ export default function TradePage() {
       if (mode === 'buy') {
         // Buy: amount is mAED (6 decimals)
         const amountWei = parseUnits(amount, 6);
+
+        // Check mAED allowance and approve if needed
+        const publicClient = createPublicClient({
+          chain: adiTestnet,
+          transport: http(),
+        });
+
+        const allowance = (await publicClient.readContract({
+          address: CONTRACTS.MockDirham.address,
+          abi: CONTRACTS.MockDirham.abi,
+          functionName: 'allowance',
+          args: [wallet.address as `0x${string}`, CONTRACTS.TradingEngine.address],
+        })) as bigint;
+
+        if (allowance < amountWei) {
+          toast.info('Approving mAED spend...');
+          await executeTrade({
+            address: CONTRACTS.MockDirham.address,
+            abi: CONTRACTS.MockDirham.abi,
+            functionName: 'approve',
+            args: [CONTRACTS.TradingEngine.address, maxUint256],
+          });
+        }
+
         await executeTrade({
           address: CONTRACTS.TradingEngine.address,
           abi: CONTRACTS.TradingEngine.abi,
@@ -194,6 +219,7 @@ export default function TradePage() {
         });
       } else {
         // Sell: amount is commodity tokens (18 decimals)
+        // No approval needed — TradingEngine has minter privilege to burn
         const amountWei = parseUnits(amount, 18);
         await executeTrade({
           address: CONTRACTS.TradingEngine.address,

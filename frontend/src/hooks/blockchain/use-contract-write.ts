@@ -65,7 +65,7 @@ export function useContractWrite() {
         transport: http(),
       });
 
-      // Simulate the transaction first (optional but recommended)
+      // Simulate the transaction first — abort if it would revert
       try {
         await publicClient.simulateContract({
           address: params.address,
@@ -76,8 +76,17 @@ export function useContractWrite() {
         });
         console.log('[Contract Write] Simulation successful');
       } catch (simError: any) {
-        console.warn('[Contract Write] Simulation warning:', simError.message);
-        // Continue anyway - simulation might fail due to state changes
+        console.error('[Contract Write] Simulation failed:', simError);
+        // Extract a readable reason from the revert
+        const reason =
+          simError.shortMessage ||
+          simError.metaMessages?.[0] ||
+          simError.message?.slice(0, 120) ||
+          'Transaction would revert on-chain';
+        setIsLoading(false);
+        setError(simError);
+        toast.error('Transaction will fail', { description: reason });
+        throw new Error(reason);
       }
 
       console.log('[Contract Write] Executing transaction...');

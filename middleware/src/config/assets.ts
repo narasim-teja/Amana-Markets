@@ -12,7 +12,7 @@ export const ASSETS = [
     symbol: 'XAU',
     name: 'Gold',
     tokenSymbol: 'xGOLD',
-    decimals: 8,
+    decimals: 18,
     pythFeedId: '0x765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2',
     diaSymbol: 'XAU-USD',
     redstoneSymbol: 'XAU',
@@ -24,7 +24,7 @@ export const ASSETS = [
     symbol: 'XAG',
     name: 'Silver',
     tokenSymbol: 'xSILVER',
-    decimals: 8,
+    decimals: 18,
     pythFeedId: '0xf2fb02c0120e23c4c9d6bcb8c0031139c61d52f9c9410f9d56e9c8e2d18e5b9a',
     diaSymbol: 'XAGG-USD', // Note: double G
     redstoneSymbol: 'XAG',
@@ -36,7 +36,7 @@ export const ASSETS = [
     symbol: 'WTI',
     name: 'Crude Oil (WTI)',
     tokenSymbol: 'xOIL',
-    decimals: 8,
+    decimals: 18,
     pythFeedId: '0xd8839e13e93db50cbc1b5b5b75774638ab56c2a0f97bcdb541e63f75f66a0cd8',
     diaSymbol: null, // DIA doesn't have oil
     redstoneSymbol: 'CRUDE_OIL',
