@@ -1,15 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { createPublicClient, http, formatUnits } from 'viem';
+import { createPublicClient, http } from 'viem';
 import { CONTRACTS } from '@/lib/contracts';
 import { adiTestnet } from '@/lib/chain';
 import { REFETCH_INTERVAL_FAST } from '@/lib/constants';
 
 interface Position {
   assetId: string;
-  commodityBalance: string; // In commodity decimals (8)
-  costBasis: string; // In stablecoin decimals (6)
-  currentValue: string; // In stablecoin decimals (6)
+  commodityBalance: string; // Raw BigInt as string (8 decimals) - use formatCommodityPrice() to display
+  costBasis: string; // Raw BigInt as string (6 decimals) - use formatAED() to display
+  currentValue: string; // Raw BigInt as string (6 decimals)
   pnl: string; // Profit/Loss in stablecoin
   pnlPercent: number; // P&L percentage
 }
@@ -47,7 +47,7 @@ export function usePosition(assetId: string | null, tokenAddress: string | null)
         args: [walletAddress as `0x${string}`],
       });
 
-      const commodityBalance = formatUnits(balance as bigint, 8);
+      const rawBalance = (balance as bigint).toString();
 
       // Get position data from trading engine
       try {
@@ -61,13 +61,11 @@ export function usePosition(assetId: string | null, tokenAddress: string | null)
         // Position structure: [balance, costBasis]
         const [posBalance, costBasis] = positionData as [bigint, bigint];
 
-        // For now, return basic data
-        // TODO: Calculate current value and PnL with live price
         return {
           assetId,
-          commodityBalance,
-          costBasis: formatUnits(costBasis, 6),
-          currentValue: '0', // TODO: Fetch current price and calculate
+          commodityBalance: rawBalance,
+          costBasis: costBasis.toString(),
+          currentValue: '0',
           pnl: '0',
           pnlPercent: 0,
         } as Position;
@@ -76,7 +74,7 @@ export function usePosition(assetId: string | null, tokenAddress: string | null)
         // Return just the balance if position fetch fails
         return {
           assetId,
-          commodityBalance,
+          commodityBalance: rawBalance,
           costBasis: '0',
           currentValue: '0',
           pnl: '0',

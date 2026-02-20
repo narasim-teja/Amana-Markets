@@ -63,7 +63,7 @@ export const apiClient = {
    */
   async getLivePrices() {
     const response = await fetch(`${API_BASE_URL}/prices/live`);
-    return handleResponse<{ prices: any[]; timestamp: number; disclaimer: string }>(response);
+    return handleResponse<{ prices: any[]; disclaimer: string; timestamp: number }>(response);
   },
 
   /**
@@ -135,7 +135,6 @@ export const apiClient = {
     const response = await fetch(`${API_BASE_URL}/vault/stats`);
     return handleResponse<{
       totalAssets: string;
-      totalExposure: string;
       utilization: number;
       availableLiquidity: string;
     }>(response);
@@ -146,7 +145,7 @@ export const apiClient = {
    */
   async getVaultExposure() {
     const response = await fetch(`${API_BASE_URL}/vault/exposure`);
-    return handleResponse<{ exposureByAsset: any[]; totalExposure: string }>(response);
+    return handleResponse<{ assetExposures: any[]; totalExposure: string }>(response);
   },
 
   /**
@@ -184,10 +183,7 @@ export const apiClient = {
     const response = await fetch(`${API_BASE_URL}/analytics/volume?period=${period}`);
     return handleResponse<{
       period: string;
-      totalVolume: string;
-      tradeCount: number;
-      byAsset: any[];
-      timeSeries?: any[];
+      volumeByAsset: any[];
     }>(response);
   },
 
@@ -197,9 +193,8 @@ export const apiClient = {
   async getFeeAnalytics() {
     const response = await fetch(`${API_BASE_URL}/analytics/fees`);
     return handleResponse<{
-      total: string;
-      byAsset: any;
-      timeSeries?: any[];
+      totalFees: string;
+      feesByAsset: any[];
     }>(response);
   },
 
@@ -209,7 +204,7 @@ export const apiClient = {
   async getTraderAnalytics() {
     const response = await fetch(`${API_BASE_URL}/analytics/traders`);
     return handleResponse<{
-      totalTraders: number;
+      stats: { unique_traders: number; total_trades: number };
       topTraders: any[];
     }>(response);
   },

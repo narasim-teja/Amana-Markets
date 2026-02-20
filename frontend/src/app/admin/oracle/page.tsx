@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/table';
 import { apiClient } from '@/lib/api-client';
 import { getPriceWebSocket, PriceUpdate } from '@/lib/websocket';
-import { enrichAssetWithMetadata } from '@/lib/assets';
+import type { LivePriceData } from '@/types/api';
+import { enrichAssetWithMetadata, type ApiAsset } from '@/lib/assets';
 import { formatRelativeTime, isPriceStale } from '@/lib/format';
 import { REFETCH_INTERVAL_FAST } from '@/lib/constants';
 import {
@@ -58,7 +59,7 @@ export default function OracleStatusPage() {
     queryFn: async () => {
       const response = await apiClient.getAssets();
       const assets = response.assets;
-      return assets.map((asset: any) => enrichAssetWithMetadata(asset));
+      return assets.map((asset: ApiAsset) => enrichAssetWithMetadata(asset));
     },
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
@@ -74,30 +75,31 @@ export default function OracleStatusPage() {
   useEffect(() => {
     const ws = getPriceWebSocket();
 
-    const handleConnect = () => {
+    // Register handlers
+    const unsubOpen = ws.onOpen(() => {
       console.log('[Oracle Status] WebSocket connected');
       setWsConnected(true);
-    };
+    });
 
-    const handleDisconnect = () => {
+    const unsubClose = ws.onClose(() => {
       console.log('[Oracle Status] WebSocket disconnected');
       setWsConnected(false);
-    };
+    });
 
-    const handlePriceUpdate = (update: PriceUpdate) => {
-      setLivePrices((prev) => ({
-        ...prev,
-        [update.assetId]: update,
-      }));
-    };
-
-    ws.on('connect', handleConnect);
-    ws.on('disconnect', handleDisconnect);
-    ws.on('price', handlePriceUpdate);
+    const unsubMessage = ws.onMessage((message) => {
+      if (message.type === 'priceUpdate' && message.data) {
+        message.data.forEach((update: PriceUpdate) => {
+          setLivePrices((prev) => ({
+            ...prev,
+            [update.assetId]: update,
+          }));
+        });
+      }
+    });
 
     // Subscribe to all assets
     if (assetsData) {
-      assetsData.forEach((asset: any) => {
+      assetsData.forEach((asset) => {
         ws.subscribe(asset.assetId);
       });
     }
@@ -105,23 +107,22 @@ export default function OracleStatusPage() {
     ws.connect();
 
     return () => {
-      ws.off('connect', handleConnect);
-      ws.off('disconnect', handleDisconnect);
-      ws.off('price', handlePriceUpdate);
-      // Note: We don't disconnect here to allow other components to use the WebSocket
+      unsubOpen();
+      unsubClose();
+      unsubMessage();
     };
   }, [assetsData]);
 
   // Merge initial prices with live updates
-  const pricesData = initialPrices?.prices || [];
-  const mergedPrices = pricesData.map((price: any) => {
+  const pricesData: LivePriceData[] = initialPrices?.prices || [];
+  const mergedPrices = pricesData.map((price: LivePriceData) => {
     const liveUpdate = livePrices[price.assetId];
     return liveUpdate ? { ...price, sources: liveUpdate.sources } : price;
   });
 
   // Process oracle data for each asset
-  const oracleData: AssetOracleData[] = assetsData?.map((asset: any) => {
-    const priceData = mergedPrices.find((p: any) => p.assetId === asset.assetId);
+  const oracleData: AssetOracleData[] = assetsData?.map((asset) => {
+    const priceData = mergedPrices.find((p: LivePriceData) => p.assetId === asset.assetId);
 
     if (!priceData || !priceData.sources) {
       return {
@@ -143,7 +144,7 @@ export default function OracleStatusPage() {
         name: 'DIA',
         price: priceData.sources.dia.price,
         timestamp: priceData.sources.dia.timestamp,
-        isStale: isPriceStale(priceData.sources.dia.timestamp),
+        isStale: priceData.sources.dia.status === 'stale' || isPriceStale(priceData.sources.dia.timestamp),
       });
     }
 
@@ -153,7 +154,7 @@ export default function OracleStatusPage() {
         name: 'RedStone',
         price: priceData.sources.redstone.price,
         timestamp: priceData.sources.redstone.timestamp,
-        isStale: isPriceStale(priceData.sources.redstone.timestamp),
+        isStale: priceData.sources.redstone.status === 'stale' || isPriceStale(priceData.sources.redstone.timestamp),
       });
     }
 
@@ -163,7 +164,7 @@ export default function OracleStatusPage() {
         name: 'Pyth',
         price: priceData.sources.pyth.price,
         timestamp: priceData.sources.pyth.timestamp,
-        isStale: isPriceStale(priceData.sources.pyth.timestamp),
+        isStale: priceData.sources.pyth.status === 'stale' || isPriceStale(priceData.sources.pyth.timestamp),
       });
     }
 

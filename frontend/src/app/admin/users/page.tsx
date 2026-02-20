@@ -35,6 +35,7 @@ import { REFETCH_INTERVAL_SLOW } from '@/lib/constants';
 import { UserPlus, UserX, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { isAddress } from 'viem';
+import { Trade } from '@/types/api';
 
 type UserStatus = 'all' | 'whitelisted' | 'blacklisted';
 
@@ -50,19 +51,19 @@ export default function UsersManagementPage() {
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
-  const { execute: executeWhitelist, isLoading: isWhitelisting } = useContractWrite();
-  const { execute: executeBlacklist, isLoading: isBlacklisting } = useContractWrite();
+  const { writeContract: executeWhitelist, isLoading: isWhitelisting } = useContractWrite();
+  const { writeContract: executeBlacklist, isLoading: isBlacklisting } = useContractWrite();
 
   // Extract unique traders from trades
   const users = tradesData?.trades
-    ? Array.from(new Set(tradesData.trades.map((t: any) => t.trader)))
+    ? Array.from(new Set(tradesData.trades.map((t: Trade) => t.trader)))
         .map((address) => {
-          const userTrades = tradesData.trades.filter((t: any) => t.trader === address);
+          const userTrades = tradesData.trades.filter((t: Trade) => t.trader === address);
           return {
             address,
             tradeCount: userTrades.length,
             totalVolume: userTrades.reduce(
-              (sum: number, t: any) => sum + parseFloat(t.stablecoin_amount),
+              (sum: number, t: Trade) => sum + parseFloat(t.stablecoin_amount),
               0
             ),
             // Status will be fetched on-chain or from API if available
@@ -110,7 +111,6 @@ export default function UsersManagementPage() {
         abi: CONTRACTS.UserRegistry.abi,
         functionName: 'whitelistUsers',
         args: [addresses],
-        successMessage: `Successfully whitelisted ${addresses.length} address(es)`,
       });
 
       setBatchAddresses('');
@@ -127,7 +127,6 @@ export default function UsersManagementPage() {
         abi: CONTRACTS.UserRegistry.abi,
         functionName: 'whitelistUsers',
         args: [[address]],
-        successMessage: `Whitelisted ${shortenAddress(address)}`,
       });
 
       refetchTrades();
@@ -143,7 +142,6 @@ export default function UsersManagementPage() {
         abi: CONTRACTS.UserRegistry.abi,
         functionName: 'blacklistUser',
         args: [address],
-        successMessage: `Blacklisted ${shortenAddress(address)}`,
       });
 
       refetchTrades();

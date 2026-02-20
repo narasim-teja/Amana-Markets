@@ -41,7 +41,7 @@ export function validateContractAddresses() {
   ] as const;
 
   const missing = requiredAddresses.filter(
-    (key) => !CONTRACT_ADDRESSES[key] || CONTRACT_ADDRESSES[key] === 'undefined'
+    (key) => !CONTRACT_ADDRESSES[key] || (CONTRACT_ADDRESSES[key] as string) === 'undefined'
   );
 
   if (missing.length > 0) {

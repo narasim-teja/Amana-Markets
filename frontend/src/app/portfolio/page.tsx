@@ -19,7 +19,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { apiClient } from '@/lib/api-client';
-import { enrichAssetWithMetadata } from '@/lib/assets';
+import { enrichAssetWithMetadata, type ApiAsset, type AssetMetadata, getAssetMetadata } from '@/lib/assets';
+import type { Trade } from '@/types/api';
 import { usePosition } from '@/hooks/api/use-position';
 import {
   formatAED,
@@ -30,8 +31,6 @@ import {
 import { REFETCH_INTERVAL_FAST, REFETCH_INTERVAL_SLOW } from '@/lib/constants';
 import {
   Wallet,
-  TrendingUp,
-  TrendingDown,
   Activity,
   BarChart3,
   ArrowUpRight,
@@ -49,7 +48,7 @@ export default function PortfolioPage() {
     queryFn: async () => {
       const response = await apiClient.getAssets();
       const assets = response.assets;
-      return assets.map((asset: any) => enrichAssetWithMetadata(asset));
+      return assets.map((asset: ApiAsset) => enrichAssetWithMetadata(asset));
     },
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
@@ -57,7 +56,7 @@ export default function PortfolioPage() {
   // Fetch user trade history
   const { data: tradesData } = useQuery({
     queryKey: ['trades', walletAddress],
-    queryFn: () => apiClient.getTrades({ trader: walletAddress, limit: 50 }),
+    queryFn: () => apiClient.getUserTrades(walletAddress!, 50),
     enabled: !!walletAddress,
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
@@ -83,7 +82,7 @@ export default function PortfolioPage() {
 
   const userTrades = tradesData?.trades || [];
   const totalVolume = userTrades.reduce(
-    (sum, trade: any) => sum + parseFloat(trade.stablecoin_amount),
+    (sum: number, trade: Trade) => sum + parseFloat(trade.stablecoin_amount),
     0
   );
 
@@ -172,42 +171,46 @@ export default function PortfolioPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {userTrades.map((trade: any) => (
-                  <TableRow key={trade.id}>
-                    <TableCell className="font-medium">
-                      {trade.asset_symbol || 'Unknown'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={trade.is_buy ? 'default' : 'destructive'}
-                        className="gap-1"
-                      >
-                        {trade.is_buy ? (
-                          <>
-                            <ArrowUpRight className="h-3 w-3" />
-                            Buy
-                          </>
-                        ) : (
-                          <>
-                            <ArrowDownRight className="h-3 w-3" />
-                            Sell
-                          </>
-                        )}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCommodityPrice(
-                        (parseFloat(trade.commodity_amount) / 1e8).toString()
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatAED((parseFloat(trade.stablecoin_amount) / 1e6).toString())}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {formatRelativeTime(trade.timestamp)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {userTrades.map((trade: Trade) => {
+                  const isBuy = !!trade.is_buy;
+                  const assetMeta = getAssetMetadata(trade.asset_id);
+                  const assetLabel = assetMeta?.symbol || 'Unknown';
+
+                  return (
+                    <TableRow key={trade.id}>
+                      <TableCell className="font-medium">
+                        {assetLabel}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={isBuy ? 'default' : 'destructive'}
+                          className="gap-1"
+                        >
+                          {isBuy ? (
+                            <>
+                              <ArrowUpRight className="h-3 w-3" />
+                              Buy
+                            </>
+                          ) : (
+                            <>
+                              <ArrowDownRight className="h-3 w-3" />
+                              Sell
+                            </>
+                          )}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatCommodityPrice(trade.token_amount)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatAED(trade.stablecoin_amount)}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {formatRelativeTime(trade.timestamp)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -217,10 +220,7 @@ export default function PortfolioPage() {
   );
 }
 
-function HoldingsTable({ assets }: { assets: any[] }) {
-  const { wallets } = useWallets();
-  const walletAddress = wallets[0]?.address;
-
+function HoldingsTable({ assets }: { assets: AssetMetadata[] }) {
   if (!assets || assets.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -250,8 +250,8 @@ function HoldingsTable({ assets }: { assets: any[] }) {
   );
 }
 
-function HoldingRow({ asset }: { asset: any }) {
-  const { data: position } = usePosition(asset.assetId, asset.tokenAddress);
+function HoldingRow({ asset }: { asset: AssetMetadata }) {
+  const { data: position } = usePosition(asset.assetId, asset.tokenAddress || null);
 
   const hasPosition = position && parseFloat(position.commodityBalance) > 0;
 
@@ -272,10 +272,10 @@ function HoldingRow({ asset }: { asset: any }) {
             </div>
           </div>
         </TableCell>
-        <TableCell className="text-right text-muted-foreground">—</TableCell>
-        <TableCell className="text-right text-muted-foreground">—</TableCell>
-        <TableCell className="text-right text-muted-foreground">—</TableCell>
-        <TableCell className="text-right text-muted-foreground">—</TableCell>
+        <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
+        <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
+        <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
+        <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
       </TableRow>
     );
   }
@@ -306,7 +306,7 @@ function HoldingRow({ asset }: { asset: any }) {
         Coming Soon
       </TableCell>
       <TableCell className="text-right">
-        <span className="text-muted-foreground">—</span>
+        <span className="text-muted-foreground">&mdash;</span>
       </TableCell>
     </TableRow>
   );

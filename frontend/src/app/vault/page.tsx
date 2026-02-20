@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiClient } from '@/lib/api-client';
 import { useContractWrite } from '@/hooks/blockchain/use-contract-write';
 import { CONTRACTS } from '@/lib/contracts';
-import { formatAED, formatCompactNumber } from '@/lib/format';
+import { formatCompactNumber } from '@/lib/format';
 import { REFETCH_INTERVAL_FAST } from '@/lib/constants';
 import {
   Wallet,
@@ -104,9 +104,30 @@ export default function VaultPage() {
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
-  const { execute: executeApprove, isLoading: isApproving } = useContractWrite();
-  const { execute: executeDeposit, isLoading: isDepositing } = useContractWrite();
-  const { execute: executeWithdraw, isLoading: isWithdrawing } = useContractWrite();
+  // Fetch total vault shares (totalSupply of vault token)
+  const { data: totalSharesStr } = useQuery({
+    queryKey: ['vaultTotalShares'],
+    queryFn: async () => {
+      const publicClient = createPublicClient({
+        chain: adiTestnet,
+        transport: http(),
+      });
+
+      const supply = await publicClient.readContract({
+        address: CONTRACTS.LiquidityVault.address as `0x${string}`,
+        abi: CONTRACTS.LiquidityVault.abi,
+        functionName: 'totalSupply',
+        args: [],
+      });
+
+      return formatUnits(supply as bigint, 6);
+    },
+    refetchInterval: REFETCH_INTERVAL_FAST,
+  });
+
+  const { writeContract: executeApprove, isLoading: isApproving } = useContractWrite();
+  const { writeContract: executeDeposit, isLoading: isDepositing } = useContractWrite();
+  const { writeContract: executeWithdraw, isLoading: isWithdrawing } = useContractWrite();
 
   const handleDeposit = async () => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) {
@@ -123,7 +144,6 @@ export default function VaultPage() {
         abi: CONTRACTS.MockDirham.abi,
         functionName: 'approve',
         args: [CONTRACTS.LiquidityVault.address, amountWei],
-        successMessage: 'mAED approved',
       });
 
       // Step 2: Deposit
@@ -132,7 +152,6 @@ export default function VaultPage() {
         abi: CONTRACTS.LiquidityVault.abi,
         functionName: 'deposit',
         args: [amountWei, walletAddress],
-        successMessage: `Deposited ${depositAmount} mAED`,
       });
 
       setDepositAmount('');
@@ -158,7 +177,6 @@ export default function VaultPage() {
         abi: CONTRACTS.LiquidityVault.abi,
         functionName: 'redeem',
         args: [sharesWei, walletAddress, walletAddress],
-        successMessage: `Withdrew ${withdrawShares} shares`,
       });
 
       setWithdrawShares('');
@@ -190,9 +208,9 @@ export default function VaultPage() {
   const totalAssets = parseFloat(vaultStats?.totalAssets || '0') / 1e6;
   const utilization = vaultStats?.utilization || 0;
   const userSharesNum = parseFloat(userShares || '0');
-  const totalShares = parseFloat(vaultStats?.totalShares || '1');
+  const totalShares = parseFloat(totalSharesStr || '1');
   const userSharePercent = totalShares > 0 ? (userSharesNum / totalShares) * 100 : 0;
-  const userValue = (userSharesNum / totalShares) * totalAssets;
+  const userValue = totalShares > 0 ? (userSharesNum / totalShares) * totalAssets : 0;
 
   // Estimate APR (simplified - in production, calculate from historical fees)
   const estimatedAPR = 8.5; // 8.5% APR placeholder
@@ -253,7 +271,7 @@ export default function VaultPage() {
           </CardHeader>
           <CardContent>
             <div className="number-display">
-              {userSharesNum > 0 ? formatAED(userValue.toString()) : '0.00'} mAED
+              {userSharesNum > 0 ? userValue.toFixed(2) : '0.00'} mAED
             </div>
           </CardContent>
         </Card>
@@ -304,7 +322,7 @@ export default function VaultPage() {
                 className="text-xl font-mono"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Available: {formatAED(mAedBalance || '0')} mAED
+                Available: {parseFloat(mAedBalance || '0').toFixed(2)} mAED
               </p>
             </div>
 
@@ -374,7 +392,7 @@ export default function VaultPage() {
                 className="text-xl font-mono"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Your shares: {formatAED(userShares || '0')}
+                Your shares: {parseFloat(userShares || '0').toFixed(2)}
               </p>
             </div>
 
@@ -384,9 +402,7 @@ export default function VaultPage() {
                   <span className="text-muted-foreground">You will receive:</span>
                   <span className="font-mono font-semibold">
                     ≈{' '}
-                    {formatAED(
-                      ((parseFloat(withdrawShares) / totalShares) * totalAssets).toString()
-                    )}{' '}
+                    {((parseFloat(withdrawShares) / totalShares) * totalAssets).toFixed(2)}{' '}
                     mAED
                   </span>
                 </div>
@@ -428,12 +444,12 @@ export default function VaultPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Your Shares</p>
-                <p className="font-mono text-2xl font-semibold">{formatAED(userShares || '0')}</p>
+                <p className="font-mono text-2xl font-semibold">{parseFloat(userShares || '0').toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Position Value</p>
                 <p className="font-mono text-2xl font-semibold text-gold">
-                  {formatAED(userValue.toString())} mAED
+                  {userValue.toFixed(2)} mAED
                 </p>
               </div>
               <div>
@@ -445,7 +461,7 @@ export default function VaultPage() {
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Est. Annual Earnings</p>
                 <p className="font-mono text-2xl font-semibold text-success">
-                  {formatAED((userValue * (estimatedAPR / 100)).toString())} mAED
+                  {(userValue * (estimatedAPR / 100)).toFixed(2)} mAED
                 </p>
               </div>
             </div>

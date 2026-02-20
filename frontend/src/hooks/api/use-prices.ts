@@ -10,31 +10,30 @@ export function useLivePrice(assetId: string | null) {
 
     const ws = getPriceWebSocket();
 
-    const handleConnect = () => {
+    const unsubOpen = ws.onOpen(() => {
       setIsConnected(true);
-    };
+    });
 
-    const handleDisconnect = () => {
+    const unsubClose = ws.onClose(() => {
       setIsConnected(false);
-    };
+    });
 
-    const handlePriceUpdate = (update: PriceUpdate) => {
-      if (update.assetId === assetId) {
-        setPrice(update);
+    const unsubMessage = ws.onMessage((message) => {
+      if (message.type === 'priceUpdate' && message.data) {
+        const update = message.data.find((p) => p.assetId === assetId);
+        if (update) {
+          setPrice(update);
+        }
       }
-    };
-
-    ws.on('connect', handleConnect);
-    ws.on('disconnect', handleDisconnect);
-    ws.on('price', handlePriceUpdate);
+    });
 
     ws.subscribe(assetId);
     ws.connect();
 
     return () => {
-      ws.off('connect', handleConnect);
-      ws.off('disconnect', handleDisconnect);
-      ws.off('price', handlePriceUpdate);
+      unsubOpen();
+      unsubClose();
+      unsubMessage();
       ws.unsubscribe(assetId);
     };
   }, [assetId]);

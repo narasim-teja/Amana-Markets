@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api-client';
-import { enrichAssetWithMetadata, type AssetMetadata } from '@/lib/assets';
+import { enrichAssetWithMetadata, type AssetMetadata, type ApiAsset } from '@/lib/assets';
 import { useLivePrice } from '@/hooks/api/use-prices';
 import { useQuote } from '@/hooks/api/use-quote';
 import { usePosition } from '@/hooks/api/use-position';
@@ -39,7 +39,6 @@ import {
   Wallet,
   AlertCircle,
   CheckCircle,
-  ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatUnits, parseUnits } from 'viem';
@@ -61,7 +60,7 @@ export default function TradePage() {
     queryFn: async () => {
       const response = await apiClient.getAssets();
       const assets = response.assets;
-      return assets.map((asset: any) => enrichAssetWithMetadata(asset));
+      return assets.map((asset: ApiAsset) => enrichAssetWithMetadata(asset));
     },
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
@@ -74,7 +73,7 @@ export default function TradePage() {
     setSelectedAssetId(assets[0].assetId);
   }
 
-  // Fetch live price
+  // Fetch live price - returns PriceUpdate with { median, lastUpdated, ... }
   const { price: livePrice, isConnected: wsConnected } = useLivePrice(selectedAssetId);
 
   // Get quote
@@ -87,8 +86,7 @@ export default function TradePage() {
   const { data: userStatus } = useUserStatus();
 
   // Contract write hook
-  const { execute: executeTrade, isLoading: isTrading } = useContractWrite();
-  const { execute: executeApprove, isLoading: isApproving } = useContractWrite();
+  const { writeContract: executeTrade, isLoading: isTrading } = useContractWrite();
 
   if (!authenticated) {
     return (
@@ -145,7 +143,7 @@ export default function TradePage() {
       return;
     }
 
-    if (!quote.totalCost || quote.totalCost === 0n) {
+    if (!quote.totalCost || quote.totalCost === BigInt(0)) {
       toast.error('Failed to get quote');
       return;
     }
@@ -154,23 +152,18 @@ export default function TradePage() {
       const amountWei = parseUnits(amount, 8);
 
       if (mode === 'buy') {
-        // Check mAED allowance first
-        // For now, we'll execute the buy directly
         await executeTrade({
           address: CONTRACTS.TradingEngine.address,
           abi: CONTRACTS.TradingEngine.abi,
           functionName: 'buy',
           args: [selectedAssetId, amountWei],
-          successMessage: `Bought ${amount} ${selectedAsset?.symbol}`,
         });
       } else {
-        // Sell - check commodity token allowance first
         await executeTrade({
           address: CONTRACTS.TradingEngine.address,
           abi: CONTRACTS.TradingEngine.abi,
           functionName: 'sell',
           args: [selectedAssetId, amountWei],
-          successMessage: `Sold ${amount} ${selectedAsset?.symbol}`,
         });
       }
 
@@ -180,8 +173,9 @@ export default function TradePage() {
     }
   };
 
-  const medianPrice = livePrice?.medianPrice ? parseFloat(livePrice.medianPrice) : 0;
-  const isStale = livePrice?.timestamp ? isPriceStale(livePrice.timestamp) : true;
+  // Use median from the LivePriceData format
+  const medianPrice = livePrice?.median ? parseFloat(livePrice.median) : 0;
+  const isStale = livePrice?.lastUpdated ? isPriceStale(livePrice.lastUpdated) : true;
 
   return (
     <div className="space-y-8">
@@ -275,7 +269,7 @@ export default function TradePage() {
                           ? 'Loading...'
                           : quote.error
                           ? 'Error'
-                          : `${formatAED(formatUnits(quote.totalCost, 6))} mAED`}
+                          : `${parseFloat(formatUnits(quote.totalCost, 6)).toFixed(2)} mAED`}
                       </span>
                     </div>
                     {medianPrice > 0 && (
@@ -353,7 +347,7 @@ export default function TradePage() {
                     </p>
                     {livePrice && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {formatRelativeTime(livePrice.timestamp)}
+                        {formatRelativeTime(livePrice.lastUpdated)}
                       </p>
                     )}
                   </div>
@@ -397,7 +391,6 @@ export default function TradePage() {
                       {formatAED(position.costBasis)} mAED
                     </p>
                   </div>
-                  {/* TODO: Add PnL when current value is calculated */}
                 </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">

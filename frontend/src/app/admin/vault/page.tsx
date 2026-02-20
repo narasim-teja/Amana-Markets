@@ -9,16 +9,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { apiClient } from '@/lib/api-client';
-import { enrichAssetWithMetadata } from '@/lib/assets';
+import { enrichAssetWithMetadata, type ApiAsset, getAssetMetadata } from '@/lib/assets';
 import { formatCompactNumber, formatAED, shortenAddress } from '@/lib/format';
 import { REFETCH_INTERVAL_FAST } from '@/lib/constants';
 import {
@@ -30,12 +22,22 @@ import {
   AlertTriangle,
   CheckCircle,
 } from 'lucide-react';
+import type { Trade } from '@/types/api';
 
 export default function VaultManagementPage() {
   // Fetch vault stats
+  // API returns: { totalAssets, utilization, availableLiquidity }
   const { data: vaultStats, isLoading: vaultLoading } = useQuery({
     queryKey: ['vaultStats'],
     queryFn: () => apiClient.getVaultStats(),
+    refetchInterval: REFETCH_INTERVAL_FAST,
+  });
+
+  // Fetch vault exposure separately
+  // API returns: { totalExposure, assetExposures: [{ asset_id, asset_exposure }] }
+  const { data: exposureData } = useQuery({
+    queryKey: ['vaultExposure'],
+    queryFn: () => apiClient.getVaultExposure(),
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
@@ -45,12 +47,12 @@ export default function VaultManagementPage() {
     queryFn: async () => {
       const response = await apiClient.getAssets();
       const assets = response.assets;
-      return assets.map((asset: any) => enrichAssetWithMetadata(asset));
+      return assets.map((asset: ApiAsset) => enrichAssetWithMetadata(asset));
     },
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
-  // Fetch trades to get LP activity
+  // Fetch trades to get vault activity
   const { data: tradesData } = useQuery({
     queryKey: ['trades', 'recent'],
     queryFn: () => apiClient.getTrades({ limit: 100 }),
@@ -63,7 +65,7 @@ export default function VaultManagementPage() {
   const isDanger = utilization >= 90;
 
   const totalAssets = parseFloat(vaultStats?.totalAssets || '0') / 1e6;
-  const totalExposure = parseFloat(vaultStats?.totalExposure || '0') / 1e6;
+  const totalExposure = parseFloat(exposureData?.totalExposure || '0') / 1e6;
   const availableLiquidity = parseFloat(vaultStats?.availableLiquidity || '0') / 1e6;
   const reservePercent = totalAssets > 0 ? (availableLiquidity / totalAssets) * 100 : 0;
 
@@ -152,13 +154,6 @@ export default function VaultManagementPage() {
                 <Progress
                   value={utilization}
                   className="h-6"
-                  indicatorClassName={
-                    isDanger
-                      ? 'bg-destructive'
-                      : isWarning
-                      ? 'bg-warning'
-                      : 'bg-gold'
-                  }
                 />
               </div>
               <span className="font-mono text-2xl font-semibold text-gold min-w-[100px] text-right">
@@ -197,8 +192,12 @@ export default function VaultManagementPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {assetsData?.map((asset: any) => {
-              const exposure = parseFloat(asset.exposure || '0') / 1e6;
+            {assetsData?.map((asset) => {
+              // Look up exposure from the exposure API data
+              const assetExposureEntry = exposureData?.assetExposures?.find(
+                (e: { asset_id: string; asset_exposure: string }) => e.asset_id === asset.assetId
+              );
+              const exposure = parseFloat(assetExposureEntry?.asset_exposure || asset.exposure || '0') / 1e6;
               const maxExposure = parseFloat(asset.maxExposure || '0') / 1e6;
               const exposurePercent = maxExposure > 0 ? (exposure / maxExposure) * 100 : 0;
               const vaultPercent = totalAssets > 0 ? (exposure / totalAssets) * 100 : 0;
@@ -235,7 +234,6 @@ export default function VaultManagementPage() {
                   <Progress
                     value={exposurePercent}
                     className="h-2"
-                    indicatorClassName={exposurePercent > 80 ? 'bg-destructive' : 'bg-gold'}
                   />
                 </div>
               );
@@ -257,29 +255,6 @@ export default function VaultManagementPage() {
               Contract events will be indexed to show individual LP stakes and shares
             </p>
           </div>
-          {/* Placeholder table structure for future implementation */}
-          {false && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>LP Address</TableHead>
-                  <TableHead className="text-right">Shares</TableHead>
-                  <TableHead className="text-right">Value (mAED)</TableHead>
-                  <TableHead className="text-right">% of Pool</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">
-                    {shortenAddress('0x0000000000000000000000000000000000000000')}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">1,000,000</TableCell>
-                  <TableCell className="text-right font-mono">1,000.00</TableCell>
-                  <TableCell className="text-right font-mono">25.0%</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          )}
         </CardContent>
       </Card>
 
@@ -290,9 +265,13 @@ export default function VaultManagementPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {tradesData?.trades?.slice(0, 5).map((trade: any) => {
-              const action = trade.is_buy ? 'Bought' : 'Sold';
-              const color = trade.is_buy ? 'text-success' : 'text-destructive';
+            {tradesData?.trades?.slice(0, 5).map((trade: Trade) => {
+              const isBuy = !!trade.is_buy;
+              const action = isBuy ? 'Bought' : 'Sold';
+              const color = isBuy ? 'text-success' : 'text-destructive';
+              // Look up asset symbol from metadata
+              const assetMeta = getAssetMetadata(trade.asset_id);
+              const assetLabel = assetMeta?.symbol || shortenAddress(trade.asset_id);
 
               return (
                 <div
@@ -300,11 +279,11 @@ export default function VaultManagementPage() {
                   className="flex items-center justify-between p-3 bg-dark-800/50 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
-                    <Badge variant={trade.is_buy ? 'default' : 'destructive'} className="min-w-[60px]">
+                    <Badge variant={isBuy ? 'default' : 'destructive'} className="min-w-[60px]">
                       {action}
                     </Badge>
                     <div>
-                      <p className="text-sm font-medium">{trade.asset_symbol || 'Unknown'}</p>
+                      <p className="text-sm font-medium">{assetLabel}</p>
                       <p className="text-xs text-muted-foreground font-mono">
                         {shortenAddress(trade.trader)}
                       </p>
@@ -312,7 +291,7 @@ export default function VaultManagementPage() {
                   </div>
                   <div className="text-right">
                     <p className={`font-mono text-sm font-semibold ${color}`}>
-                      {trade.is_buy ? '+' : '-'}
+                      {isBuy ? '+' : '-'}
                       {formatCompactNumber(parseFloat(trade.stablecoin_amount) / 1e6)} mAED
                     </p>
                   </div>

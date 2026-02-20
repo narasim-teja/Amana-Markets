@@ -3,9 +3,24 @@
  * Handles connection, reconnection, subscriptions, and message broadcasting
  */
 
-type MessageHandler = (data: any) => void;
-type ErrorHandler = (error: Error) => void;
-type ConnectionHandler = () => void;
+/**
+ * Price update matching LivePriceData from middleware server
+ */
+export interface PriceUpdate {
+  assetId: string;
+  symbol: string;
+  name: string;
+  displayPrice: string;
+  displayPriceRaw: string;
+  sources: {
+    dia?: { price: string; timestamp: number; status: 'ok' | 'stale' | 'error' };
+    pyth?: { price: string; timestamp: number; status: 'ok' | 'stale' | 'error' };
+    redstone?: { price: string; timestamp: number; status: 'ok' | 'stale' | 'error' };
+  };
+  median: string;
+  lastUpdated: number;
+  cacheStatus: 'fresh' | 'stale';
+}
 
 interface WebSocketMessage {
   type: 'subscribe' | 'unsubscribe' | 'ping';
@@ -14,11 +29,15 @@ interface WebSocketMessage {
 
 interface WebSocketResponse {
   type: 'priceUpdate' | 'subscribed' | 'unsubscribed' | 'pong' | 'error';
-  data?: any[];
+  data?: PriceUpdate[];
   assetId?: string;
   message?: string;
   timestamp: number;
 }
+
+type MessageHandler = (data: WebSocketResponse) => void;
+type ErrorHandler = (error: Error) => void;
+type ConnectionHandler = () => void;
 
 /**
  * Price WebSocket Client

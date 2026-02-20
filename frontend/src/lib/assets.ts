@@ -11,11 +11,27 @@ export const ASSET_IDS = {
 } as const;
 
 /**
+ * API Asset Response
+ * Raw asset data from the /assets API endpoint
+ */
+export interface ApiAsset {
+  asset_id: string;
+  symbol?: string;
+  name?: string;
+  token_address?: `0x${string}`;
+  status?: string;
+  spread?: number;
+  exposure?: string;
+  max_exposure?: string;
+  volume_24h?: string;
+}
+
+/**
  * Asset Metadata Interface
  * Combines on-chain data with UI-specific metadata (icons, colors, etc.)
  */
 export interface AssetMetadata {
-  id: string;
+  assetId: string;
   symbol: string; // Oracle symbol (XAU, XAG, WTI)
   name: string; // Human-readable name
   tokenSymbol: string; // Token symbol (xGOLD, xSILVER, xOIL)
@@ -24,6 +40,13 @@ export interface AssetMetadata {
   description: string; // Short description
   decimals: number; // Token decimals (always 8 for commodities)
   tokenAddress?: `0x${string}`; // ERC20 token address (loaded from API)
+
+  // API-provided properties
+  status?: string; // Asset status (active, paused, etc.)
+  spread?: number; // Trading spread percentage
+  exposure?: string; // Current vault exposure
+  maxExposure?: string; // Maximum allowed exposure
+  volume24h?: string; // 24-hour trading volume
 }
 
 /**
@@ -32,7 +55,7 @@ export interface AssetMetadata {
  */
 export const ASSET_METADATA: Record<string, AssetMetadata> = {
   [ASSET_IDS.GOLD]: {
-    id: ASSET_IDS.GOLD,
+    assetId: ASSET_IDS.GOLD,
     symbol: 'XAU',
     name: 'Gold',
     tokenSymbol: 'xGOLD',
@@ -43,7 +66,7 @@ export const ASSET_METADATA: Record<string, AssetMetadata> = {
     tokenAddress: process.env.NEXT_PUBLIC_XGOLD as `0x${string}`,
   },
   [ASSET_IDS.SILVER]: {
-    id: ASSET_IDS.SILVER,
+    assetId: ASSET_IDS.SILVER,
     symbol: 'XAG',
     name: 'Silver',
     tokenSymbol: 'xSILVER',
@@ -54,7 +77,7 @@ export const ASSET_METADATA: Record<string, AssetMetadata> = {
     tokenAddress: process.env.NEXT_PUBLIC_XSILVER as `0x${string}`,
   },
   [ASSET_IDS.OIL]: {
-    id: ASSET_IDS.OIL,
+    assetId: ASSET_IDS.OIL,
     symbol: 'WTI',
     name: 'Crude Oil (WTI)',
     tokenSymbol: 'xOIL',
@@ -87,14 +110,14 @@ export function getAllAssetMetadata(): AssetMetadata[] {
  * @param apiAsset - Asset data from /assets API endpoint
  * @returns Complete AssetMetadata with both API and local data
  */
-export function enrichAssetWithMetadata(apiAsset: any): AssetMetadata {
+export function enrichAssetWithMetadata(apiAsset: ApiAsset): AssetMetadata {
   const metadata = ASSET_METADATA[apiAsset.asset_id];
 
   if (!metadata) {
     // Fallback for unknown assets (future commodities)
     console.warn(`No metadata found for asset ${apiAsset.asset_id}, using defaults`);
     return {
-      id: apiAsset.asset_id,
+      assetId: apiAsset.asset_id,
       symbol: apiAsset.symbol || 'UNKNOWN',
       name: apiAsset.name || 'Unknown Asset',
       tokenSymbol: apiAsset.symbol ? `x${apiAsset.symbol}` : 'xUNKNOWN',

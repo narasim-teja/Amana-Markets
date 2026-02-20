@@ -19,10 +19,10 @@ export function useQuote(
   debounceMs: number = 500
 ) {
   const [quote, setQuote] = useState<QuoteResult>({
-    totalCost: 0n,
-    effectivePrice: 0n,
-    spread: 0n,
-    fee: 0n,
+    totalCost: BigInt(0),
+    effectivePrice: BigInt(0),
+    spread: BigInt(0),
+    fee: BigInt(0),
     isLoading: false,
     error: null,
   });
@@ -30,10 +30,10 @@ export function useQuote(
   useEffect(() => {
     if (!assetId || !amount || parseFloat(amount) <= 0) {
       setQuote({
-        totalCost: 0n,
-        effectivePrice: 0n,
-        spread: 0n,
-        fee: 0n,
+        totalCost: BigInt(0),
+        effectivePrice: BigInt(0),
+        spread: BigInt(0),
+        fee: BigInt(0),
         isLoading: false,
         error: null,
       });
@@ -64,19 +64,19 @@ export function useQuote(
         // Result is the total cost in stablecoin (6 decimals)
         setQuote({
           totalCost: result as bigint,
-          effectivePrice: 0n, // TODO: Calculate from result
-          spread: 0n, // TODO: Get from contract if available
-          fee: 0n, // TODO: Calculate fee
+          effectivePrice: BigInt(0), // TODO: Calculate from result
+          spread: BigInt(0), // TODO: Get from contract if available
+          fee: BigInt(0), // TODO: Calculate fee
           isLoading: false,
           error: null,
         });
       } catch (error: any) {
         console.error('Quote failed:', error);
         setQuote({
-          totalCost: 0n,
-          effectivePrice: 0n,
-          spread: 0n,
-          fee: 0n,
+          totalCost: BigInt(0),
+          effectivePrice: BigInt(0),
+          spread: BigInt(0),
+          fee: BigInt(0),
           isLoading: false,
           error: error.message || 'Failed to get quote',
         });

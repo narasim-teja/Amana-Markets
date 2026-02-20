@@ -3,6 +3,7 @@
  * Imported from exported Foundry ABIs
  */
 
+import type { Abi } from 'viem';
 import OracleRouterAbi from './abis/OracleRouter.json';
 import TradingEngineAbi from './abis/TradingEngine.json';
 import LiquidityVaultAbi from './abis/LiquidityVault.json';
@@ -14,15 +15,15 @@ import DIAAdapterAbi from './abis/DIAAdapter.json';
 import RedStoneAdapterAbi from './abis/RedStoneAdapter.json';
 
 export const ABIS = {
-  OracleRouter: OracleRouterAbi,
-  TradingEngine: TradingEngineAbi,
-  LiquidityVault: LiquidityVaultAbi,
-  AssetRegistry: AssetRegistryAbi,
-  UserRegistry: UserRegistryAbi,
-  CommodityToken: CommodityTokenAbi,
-  PythAdapter: PythAdapterAbi,
-  DIAAdapter: DIAAdapterAbi,
-  RedStoneAdapter: RedStoneAdapterAbi,
+  OracleRouter: OracleRouterAbi as Abi,
+  TradingEngine: TradingEngineAbi as Abi,
+  LiquidityVault: LiquidityVaultAbi as Abi,
+  AssetRegistry: AssetRegistryAbi as Abi,
+  UserRegistry: UserRegistryAbi as Abi,
+  CommodityToken: CommodityTokenAbi as Abi,
+  PythAdapter: PythAdapterAbi as Abi,
+  DIAAdapter: DIAAdapterAbi as Abi,
+  RedStoneAdapter: RedStoneAdapterAbi as Abi,
 
   // Standard ERC20 ABI (for MockDirham and commodity tokens)
   ERC20: [

@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import { VolumeChart } from '@/components/charts/volume-chart';
 import { apiClient } from '@/lib/api-client';
-import { enrichAssetWithMetadata } from '@/lib/assets';
+import { enrichAssetWithMetadata, type ApiAsset, getAssetMetadata } from '@/lib/assets';
 import { formatCompactNumber, formatAED, shortenAddress } from '@/lib/format';
 import { REFETCH_INTERVAL_SLOW } from '@/lib/constants';
 import {
@@ -37,6 +37,7 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>('24h');
 
   // Fetch volume analytics
+  // API returns: { period, volumeByAsset: [{ asset_id, trade_count, total_volume, buy_count, sell_count }] }
   const { data: volumeData, isLoading: volumeLoading } = useQuery({
     queryKey: ['volume', period],
     queryFn: () => apiClient.getVolumeAnalytics(period),
@@ -44,16 +45,18 @@ export default function AnalyticsPage() {
   });
 
   // Fetch fee analytics
+  // API returns: { totalFees: string, feesByAsset: [{ asset_id, total_fees }] }
   const { data: feesData, isLoading: feesLoading } = useQuery({
     queryKey: ['fees'],
     queryFn: () => apiClient.getFeeAnalytics(),
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
-  // Fetch trades for top traders
-  const { data: tradesData } = useQuery({
-    queryKey: ['trades', 'analytics'],
-    queryFn: () => apiClient.getTrades({ limit: 1000 }),
+  // Fetch trader analytics
+  // API returns: { stats: { unique_traders, total_trades }, topTraders: [{ trader, trade_count, total_volume }] }
+  const { data: traderData } = useQuery({
+    queryKey: ['traders'],
+    queryFn: () => apiClient.getTraderAnalytics(),
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
@@ -63,41 +66,25 @@ export default function AnalyticsPage() {
     queryFn: async () => {
       const response = await apiClient.getAssets();
       const assets = response.assets;
-      return assets.map((asset: any) => enrichAssetWithMetadata(asset));
+      return assets.map((asset: ApiAsset) => enrichAssetWithMetadata(asset));
     },
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
-  // Calculate top traders
-  const topTraders = tradesData?.trades
-    ? Object.entries(
-        tradesData.trades.reduce((acc: any, trade: any) => {
-          const trader = trade.trader;
-          if (!acc[trader]) {
-            acc[trader] = {
-              address: trader,
-              volume: 0,
-              trades: 0,
-              pnl: 0,
-            };
-          }
-          acc[trader].volume += parseFloat(trade.stablecoin_amount);
-          acc[trader].trades += 1;
-          return acc;
-        }, {})
-      )
-        .map(([_, data]) => data)
-        .sort((a: any, b: any) => b.volume - a.volume)
-        .slice(0, 10)
-    : [];
+  // Compute totals from volumeByAsset
+  const volumeByAsset = volumeData?.volumeByAsset || [];
+  const totalVolume = volumeByAsset.reduce(
+    (sum: number, v: any) => sum + parseInt(v.total_volume || '0'),
+    0
+  );
+  const totalTradeCount = volumeByAsset.reduce(
+    (sum: number, v: any) => sum + (v.trade_count || 0),
+    0
+  );
 
-  // Prepare volume chart data
-  const volumeChartData = volumeData?.timeSeries
-    ? volumeData.timeSeries.map((item: any) => ({
-        time: new Date(item.date).getTime() / 1000,
-        value: parseFloat(item.volume) / 1e6, // Convert to mAED
-      }))
-    : [];
+  // Top traders from API
+  const topTraders = traderData?.topTraders || [];
+  const uniqueTraders = traderData?.stats?.unique_traders || 0;
 
   return (
     <div className="space-y-8">
@@ -121,48 +108,29 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatsCard
               title="Total Volume"
-              value={`${formatCompactNumber(parseFloat(volumeData?.totalVolume || '0') / 1e6)} mAED`}
+              value={`${formatCompactNumber(totalVolume / 1e6)} mAED`}
               icon={TrendingUp}
               loading={volumeLoading}
             />
             <StatsCard
               title="Trade Count"
-              value={volumeData?.tradeCount?.toString() || '0'}
+              value={totalTradeCount.toString()}
               icon={Activity}
               loading={volumeLoading}
             />
             <StatsCard
               title="Total Fees"
-              value={`${formatAED((feesData?.total || '0').toString())} mAED`}
+              value={`${formatAED(feesData?.totalFees || '0')} mAED`}
               icon={DollarSign}
               loading={feesLoading}
             />
             <StatsCard
               title="Unique Traders"
-              value={topTraders.length.toString()}
+              value={uniqueTraders.toString()}
               icon={Users}
               loading={volumeLoading}
             />
           </div>
-
-          {/* Volume Chart */}
-          <Card className="premium-card">
-            <CardHeader>
-              <CardTitle className="text-xl font-display flex items-center gap-3">
-                <BarChart3 className="h-5 w-5 text-gold" />
-                Volume Over Time
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {volumeChartData.length > 0 ? (
-                <VolumeChart data={volumeChartData} height={350} />
-              ) : (
-                <div className="h-[350px] flex items-center justify-center text-muted-foreground">
-                  <p>No volume data available</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           {/* Volume Breakdown by Asset */}
           <Card className="premium-card">
@@ -171,12 +139,14 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {assetsData?.map((asset: any) => {
-                  const assetVolume =
-                    volumeData?.byAsset?.find((v: any) => v.assetId === asset.assetId)
-                      ?.volume || '0';
-                  const volumePercent = volumeData?.totalVolume
-                    ? (parseFloat(assetVolume) / parseFloat(volumeData.totalVolume)) * 100
+                {assetsData?.map((asset) => {
+                  const assetVolumeEntry = volumeByAsset.find(
+                    (v: any) => v.asset_id === asset.assetId
+                  );
+                  const assetVolume = parseInt(assetVolumeEntry?.total_volume || '0');
+                  const assetTradeCount = assetVolumeEntry?.trade_count || 0;
+                  const volumePercent = totalVolume > 0
+                    ? (assetVolume / totalVolume) * 100
                     : 0;
 
                   return (
@@ -202,7 +172,13 @@ export default function AnalyticsPage() {
                         <div className="flex justify-between items-baseline">
                           <span className="text-sm text-muted-foreground">Volume</span>
                           <span className="font-mono font-semibold">
-                            {formatCompactNumber(parseFloat(assetVolume) / 1e6)} mAED
+                            {formatCompactNumber(assetVolume / 1e6)} mAED
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-sm text-muted-foreground">Trades</span>
+                          <span className="font-mono font-semibold">
+                            {assetTradeCount}
                           </span>
                         </div>
                         <div className="flex justify-between items-baseline">
@@ -229,15 +205,15 @@ export default function AnalyticsPage() {
                 <div className="p-4 bg-dark-800/30 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">Total Fees (All Time)</p>
                   <p className="number-display">
-                    {formatAED(parseFloat(feesData?.total || '0'))} mAED
+                    {formatAED(feesData?.totalFees || '0')} mAED
                   </p>
                 </div>
                 <div className="p-4 bg-dark-800/30 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">Avg Fee per Trade</p>
                   <p className="number-display">
-                    {volumeData?.tradeCount && feesData?.total
+                    {totalTradeCount > 0 && feesData?.totalFees
                       ? formatAED(
-                          parseFloat(feesData.total) / volumeData.tradeCount
+                          Math.floor(parseInt(feesData.totalFees) / totalTradeCount).toString()
                         )
                       : '0.00'}{' '}
                     mAED
@@ -245,11 +221,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="p-4 bg-dark-800/30 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">Fee Rate</p>
-                  <p className="number-display">
-                    {feesData?.feeRate
-                      ? `${(parseFloat(feesData.feeRate) * 100).toFixed(3)}%`
-                      : '0.10%'}
-                  </p>
+                  <p className="number-display">0.10%</p>
                 </div>
               </div>
             </CardContent>
@@ -277,18 +249,18 @@ export default function AnalyticsPage() {
                   </TableHeader>
                   <TableBody>
                     {topTraders.map((trader: any, index: number) => (
-                      <TableRow key={trader.address}>
+                      <TableRow key={trader.trader}>
                         <TableCell>
                           <Badge variant="outline">#{index + 1}</Badge>
                         </TableCell>
                         <TableCell className="font-mono text-sm">
-                          {shortenAddress(trader.address)}
+                          {shortenAddress(trader.trader)}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {trader.trades}
+                          {trader.trade_count}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {formatCompactNumber(trader.volume / 1e6)}
+                          {formatCompactNumber(parseInt(trader.total_volume || '0') / 1e6)}
                         </TableCell>
                       </TableRow>
                     ))}

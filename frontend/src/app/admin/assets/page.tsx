@@ -24,7 +24,7 @@ import {
 import { apiClient } from '@/lib/api-client';
 import { useContractWrite } from '@/hooks/blockchain/use-contract-write';
 import { CONTRACTS } from '@/lib/contracts';
-import { enrichAssetWithMetadata, type AssetMetadata } from '@/lib/assets';
+import { enrichAssetWithMetadata, type AssetMetadata, type ApiAsset } from '@/lib/assets';
 import { formatCompactNumber } from '@/lib/format';
 import { REFETCH_INTERVAL_SLOW } from '@/lib/constants';
 import {
@@ -46,7 +46,7 @@ export default function AssetsManagementPage() {
     queryFn: async () => {
       const response = await apiClient.getAssets();
       const assets = response.assets;
-      return assets.map((asset: any) => enrichAssetWithMetadata(asset));
+      return assets.map((asset: ApiAsset) => enrichAssetWithMetadata(asset));
     },
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
@@ -110,8 +110,7 @@ interface AssetCardProps {
 }
 
 function AssetCard({ asset, onUpdate }: AssetCardProps) {
-  const { execute: executePause, isLoading: isPausing } = useContractWrite();
-  const { execute: executeSpread, isLoading: isUpdatingSpread } = useContractWrite();
+  const { writeContract: executePause, isLoading: isPausing } = useContractWrite();
 
   const isPaused = asset.status === 'paused';
 
@@ -123,7 +122,6 @@ function AssetCard({ asset, onUpdate }: AssetCardProps) {
           abi: CONTRACTS.AssetRegistry.abi,
           functionName: 'unpauseAsset',
           args: [asset.assetId],
-          successMessage: `${asset.name} trading resumed`,
         });
       } else {
         await executePause({
@@ -131,7 +129,6 @@ function AssetCard({ asset, onUpdate }: AssetCardProps) {
           abi: CONTRACTS.AssetRegistry.abi,
           functionName: 'pauseAsset',
           args: [asset.assetId],
-          successMessage: `${asset.name} trading paused`,
         });
       }
       onUpdate();
@@ -223,7 +220,7 @@ function AssetCard({ asset, onUpdate }: AssetCardProps) {
 function AdjustSpreadDialog({ asset, onUpdate }: AssetCardProps) {
   const [spreadBps, setSpreadBps] = useState('');
   const [open, setOpen] = useState(false);
-  const { execute, isLoading } = useContractWrite();
+  const { writeContract, isLoading } = useContractWrite();
 
   const handleUpdateSpread = async () => {
     if (!spreadBps || parseFloat(spreadBps) < 0) {
@@ -232,12 +229,11 @@ function AdjustSpreadDialog({ asset, onUpdate }: AssetCardProps) {
     }
 
     try {
-      await execute({
+      await writeContract({
         address: CONTRACTS.AssetRegistry.address,
         abi: CONTRACTS.AssetRegistry.abi,
         functionName: 'updateSpread',
         args: [asset.assetId, BigInt(Math.floor(parseFloat(spreadBps)))],
-        successMessage: `Updated ${asset.name} spread to ${parseFloat(spreadBps) / 100}%`,
       });
 
       setOpen(false);
@@ -295,7 +291,7 @@ function AdjustSpreadDialog({ asset, onUpdate }: AssetCardProps) {
 function UpdateLimitsDialog({ asset, onUpdate }: AssetCardProps) {
   const [maxExposure, setMaxExposure] = useState('');
   const [open, setOpen] = useState(false);
-  const { execute, isLoading } = useContractWrite();
+  const { writeContract, isLoading } = useContractWrite();
 
   const handleUpdateLimits = async () => {
     if (!maxExposure || parseFloat(maxExposure) <= 0) {
@@ -307,12 +303,11 @@ function UpdateLimitsDialog({ asset, onUpdate }: AssetCardProps) {
       // Convert mAED to wei (6 decimals)
       const maxExposureWei = parseUnits(maxExposure, 6);
 
-      await execute({
+      await writeContract({
         address: CONTRACTS.AssetRegistry.address,
         abi: CONTRACTS.AssetRegistry.abi,
         functionName: 'updateExposureLimits',
         args: [asset.assetId, maxExposureWei],
-        successMessage: `Updated ${asset.name} max exposure to ${maxExposure} mAED`,
       });
 
       setOpen(false);
@@ -373,9 +368,9 @@ function UpdateLimitsDialog({ asset, onUpdate }: AssetCardProps) {
 function GlobalControlsCard() {
   const [fxRate, setFxRate] = useState('');
   const [maxUtilization, setMaxUtilization] = useState('');
-  const { execute: executePauseAll, isLoading: isPausingAll } = useContractWrite();
-  const { execute: executeFxRate, isLoading: isUpdatingFx } = useContractWrite();
-  const { execute: executeUtilization, isLoading: isUpdatingUtil } = useContractWrite();
+  const { writeContract: executePauseAll, isLoading: isPausingAll } = useContractWrite();
+  const { writeContract: executeFxRate, isLoading: isUpdatingFx } = useContractWrite();
+  const { writeContract: executeUtilization, isLoading: isUpdatingUtil } = useContractWrite();
 
   const handleEmergencyPause = async () => {
     try {
@@ -384,7 +379,6 @@ function GlobalControlsCard() {
         abi: CONTRACTS.TradingEngine.abi,
         functionName: 'pauseTrading',
         args: [],
-        successMessage: 'All trading paused',
       });
     } catch (error) {
       console.error('Emergency pause failed:', error);
@@ -406,7 +400,6 @@ function GlobalControlsCard() {
         abi: CONTRACTS.OracleRouter.abi,
         functionName: 'updateFxRate',
         args: [fxRateWei],
-        successMessage: `FX rate updated to ${fxRate} AED/USD`,
       });
 
       setFxRate('');
@@ -430,7 +423,6 @@ function GlobalControlsCard() {
         abi: CONTRACTS.LiquidityVault.abi,
         functionName: 'updateMaxUtilization',
         args: [utilizationBps],
-        successMessage: `Max utilization updated to ${maxUtilization}%`,
       });
 
       setMaxUtilization('');

@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { apiClient } from '@/lib/api-client';
-import { formatCompactNumber, formatAED, formatRelativeTime, isPriceStale } from '@/lib/format';
+import { getAssetMetadata } from '@/lib/assets';
+import { formatCompactNumber, formatAED, formatRelativeTime, isPriceStale, shortenAddress } from '@/lib/format';
 import { REFETCH_INTERVAL_FAST, REFETCH_INTERVAL_SLOW } from '@/lib/constants';
 import {
   DollarSign,
@@ -58,6 +59,17 @@ export default function AdminOverviewPage() {
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
+  // Compute totals from volumeByAsset
+  const volumeByAsset = volumeData?.volumeByAsset || [];
+  const totalVolume = volumeByAsset.reduce(
+    (sum: number, v: { total_volume?: string }) => sum + parseInt(v.total_volume || '0'),
+    0
+  );
+  const totalTradeCount = volumeByAsset.reduce(
+    (sum: number, v: { trade_count?: number }) => sum + (v.trade_count || 0),
+    0
+  );
+
   return (
     <div className="space-y-8">
       <div>
@@ -77,7 +89,7 @@ export default function AdminOverviewPage() {
         />
         <StatsCard
           title="24h Volume"
-          value={`${formatCompactNumber(parseFloat(volumeData?.totalVolume || '0'))} mAED`}
+          value={`${formatCompactNumber(totalVolume / 1e6)} mAED`}
           change="+12.5%"
           changeType="positive"
           icon={TrendingUp}
@@ -85,13 +97,13 @@ export default function AdminOverviewPage() {
         />
         <StatsCard
           title="Total Fees Collected"
-          value={`${parseFloat(feesData?.total || '0')} mAED`}
+          value={`${formatAED(feesData?.totalFees || '0')} mAED`}
           icon={Activity}
           loading={feesLoading}
         />
         <StatsCard
           title="Total Trades"
-          value={volumeData?.tradeCount?.toString() || '0'}
+          value={totalTradeCount.toString()}
           icon={Users}
           loading={volumeLoading}
         />
@@ -122,9 +134,9 @@ export default function AdminOverviewPage() {
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Total Exposure</p>
+              <p className="text-muted-foreground">Utilization</p>
               <p className="font-mono font-semibold">
-                {formatCompactNumber(parseFloat(vaultStats?.totalExposure || '0') / 1e6)} mAED
+                {vaultStats?.utilization?.toFixed(2) || '0.00'}%
               </p>
             </div>
             <div>
@@ -149,32 +161,38 @@ export default function AdminOverviewPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {tradesData?.trades?.slice(0, 5).map((trade: any) => (
-                <div
-                  key={trade.id}
-                  className="flex items-center justify-between p-3 bg-dark-800/50 rounded-lg hover:bg-dark-800 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Badge variant={trade.is_buy ? 'default' : 'destructive'}>
-                      {trade.is_buy ? 'BUY' : 'SELL'}
-                    </Badge>
-                    <div>
-                      <p className="text-sm font-medium">{trade.asset_symbol || 'Unknown'}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {trade.trader?.slice(0, 6)}...{trade.trader?.slice(-4)}
+              {tradesData?.trades?.slice(0, 5).map((trade: any) => {
+                const isBuy = !!trade.is_buy;
+                const assetMeta = getAssetMetadata(trade.asset_id);
+                const assetLabel = assetMeta?.symbol || shortenAddress(trade.asset_id);
+
+                return (
+                  <div
+                    key={trade.id}
+                    className="flex items-center justify-between p-3 bg-dark-800/50 rounded-lg hover:bg-dark-800 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Badge variant={isBuy ? 'default' : 'destructive'}>
+                        {isBuy ? 'BUY' : 'SELL'}
+                      </Badge>
+                      <div>
+                        <p className="text-sm font-medium">{assetLabel}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {shortenAddress(trade.trader)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono text-sm font-semibold">
+                        {formatCompactNumber(parseFloat(trade.stablecoin_amount) / 1e6)} mAED
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatRelativeTime(trade.timestamp)}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-mono text-sm font-semibold">
-                      {formatCompactNumber(parseFloat(trade.stablecoin_amount) / 1e6)} mAED
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatRelativeTime(trade.timestamp)}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
