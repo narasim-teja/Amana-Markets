@@ -36,7 +36,6 @@ import {
   Activity,
   TrendingUp,
   TrendingDown,
-  Radio,
   Wallet,
   AlertCircle,
   CheckCircle,
@@ -56,7 +55,7 @@ import { usePriceChart } from '@/hooks/api/use-price-chart';
 type TradeMode = 'buy' | 'sell';
 
 export default function TradePage() {
-  const { authenticated, login } = usePrivy();
+  const { ready, authenticated, login } = usePrivy();
   const { wallets } = useWallets();
   const wallet = wallets[0];
 
@@ -85,8 +84,7 @@ export default function TradePage() {
   }
 
   // Fetch live price
-  const { price: livePrice, isConnected: wsConnected } =
-    useLivePrice(selectedAssetId);
+  const { price: livePrice } = useLivePrice(selectedAssetId);
 
   // Get quote
   const quote = useQuote(selectedAssetId, mode === 'buy', amount);
@@ -98,7 +96,7 @@ export default function TradePage() {
   );
 
   // Check user status
-  const { data: userStatus } = useUserStatus();
+  const { data: userStatus, isLoading: statusLoading } = useUserStatus();
 
   // Contract write hook
   const { writeContract: executeTrade, isLoading: isTrading } =
@@ -116,6 +114,17 @@ export default function TradePage() {
     setRange,
   } = usePriceChart(selectedAssetId);
   const [hoveredPrice, setHoveredPrice] = useState<number | null>(null);
+
+  if (!ready || (authenticated && statusLoading)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!authenticated) {
     return (
@@ -238,23 +247,6 @@ export default function TradePage() {
             Buy and sell tokenized commodities with real-time oracle pricing
           </p>
         </div>
-        <Badge
-          variant="outline"
-          className={cn(
-            'gap-1.5 px-3 py-1 w-fit',
-            wsConnected
-              ? 'border-emerald-500/30 text-emerald-400'
-              : 'border-dark-600 text-muted-foreground'
-          )}
-        >
-          <Radio
-            className={cn(
-              'h-3 w-3',
-              wsConnected && 'text-emerald-400 animate-pulse'
-            )}
-          />
-          {wsConnected ? 'Live' : 'Disconnected'}
-        </Badge>
       </div>
 
       {/* Main Grid - Chart Left, Trading Right */}

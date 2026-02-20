@@ -7,8 +7,6 @@ import vault from './routes/vault';
 import users from './routes/users';
 import analytics from './routes/analytics';
 import health from './routes/health';
-import { priceWebSocketServer } from '../services/websocket';
-import type { ServerWebSocket } from 'bun';
 
 const app = new Hono();
 
@@ -37,17 +35,8 @@ app.get('/', (c) => c.json({
     '/users',
     '/analytics',
     '/health'
-  ],
-  websocket: {
-    endpoint: '/ws/prices',
-    description: 'Real-time price updates via WebSocket'
-  }
+  ]
 }));
-
-interface WebSocketData {
-  subscribedAssets: Set<string>;
-  clientId: string;
-}
 
 export async function startAPI() {
   const port = parseInt(process.env.API_PORT || '3000');
@@ -56,47 +45,12 @@ export async function startAPI() {
 
   const server = Bun.serve({
     port,
-    fetch(req, server) {
-      // Check if this is a WebSocket upgrade request
-      const url = new URL(req.url);
-      if (url.pathname === '/ws/prices') {
-        const upgraded = server.upgrade(req, {
-          data: {
-            subscribedAssets: new Set<string>(),
-            clientId: `client_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-          } as WebSocketData
-        });
-
-        if (upgraded) {
-          return undefined; // WebSocket upgrade successful
-        }
-
-        // Upgrade failed
-        return new Response('WebSocket upgrade failed', { status: 400 });
-      }
-
-      // Regular HTTP request, handle with Hono
-      return app.fetch(req, server);
-    },
-    websocket: {
-      open(ws) {
-        priceWebSocketServer.addClient(ws as ServerWebSocket<WebSocketData>);
-      },
-      message(ws, message) {
-        const msgString = typeof message === 'string' ? message : new TextDecoder().decode(message);
-        priceWebSocketServer.handleMessage(ws as ServerWebSocket<WebSocketData>, msgString);
-      },
-      close(ws) {
-        priceWebSocketServer.removeClient(ws as ServerWebSocket<WebSocketData>);
-      }
+    fetch(req) {
+      return app.fetch(req);
     }
   });
 
-  // Start WebSocket price broadcasting
-  priceWebSocketServer.start();
-
   console.log(`✅ API Server running on http://localhost:${port}`);
-  console.log(`📡 WebSocket server running on ws://localhost:${port}/ws/prices`);
 
   return server;
 }

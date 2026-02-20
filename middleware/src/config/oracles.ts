@@ -4,5 +4,5 @@ export const ORACLE_APIS = {
   REDSTONE: 'https://api.redstone.finance/prices'
 } as const;
 
-export const PRICE_STALENESS_SECONDS = 600; // 10 minutes
-export const RELAYER_INTERVAL_MS = parseInt(process.env.RELAYER_INTERVAL_MS || '60000');
+export const PRICE_STALENESS_SECONDS = 86400; // 24 hours
+export const RELAYER_INTERVAL_MS = parseInt(process.env.RELAYER_INTERVAL_MS || '1200000'); // 20 minutes

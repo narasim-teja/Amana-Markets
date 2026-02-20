@@ -5,7 +5,6 @@
  * Monitor oracle price feeds and health
  */
 
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,17 +17,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { apiClient } from '@/lib/api-client';
-import { getPriceWebSocket, PriceUpdate } from '@/lib/websocket';
 import type { LivePriceData } from '@/types/api';
 import { enrichAssetWithMetadata, type ApiAsset } from '@/lib/assets';
 import { formatRelativeTime, isPriceStale } from '@/lib/format';
-import { REFETCH_INTERVAL_FAST } from '@/lib/constants';
+import { REFETCH_INTERVAL_SLOW } from '@/lib/constants';
 import {
   Activity,
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Radio,
   TrendingUp,
 } from 'lucide-react';
 
@@ -50,9 +47,6 @@ interface AssetOracleData {
 }
 
 export default function OracleStatusPage() {
-  const [livePrices, setLivePrices] = useState<Record<string, PriceUpdate>>({});
-  const [wsConnected, setWsConnected] = useState(false);
-
   // Fetch assets
   const { data: assetsData } = useQuery({
     queryKey: ['assets'],
@@ -61,68 +55,21 @@ export default function OracleStatusPage() {
       const assets = response.assets;
       return assets.map((asset: ApiAsset) => enrichAssetWithMetadata(asset));
     },
-    refetchInterval: REFETCH_INTERVAL_FAST,
+    refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
-  // Fetch initial prices
-  const { data: initialPrices } = useQuery({
+  // Fetch prices via REST (polls every 60s)
+  const { data: pricesResponse } = useQuery({
     queryKey: ['prices', 'live'],
     queryFn: () => apiClient.getLivePrices(),
-    refetchInterval: REFETCH_INTERVAL_FAST,
+    refetchInterval: 60_000,
   });
 
-  // Connect to WebSocket for real-time price updates
-  useEffect(() => {
-    const ws = getPriceWebSocket();
-
-    // Register handlers
-    const unsubOpen = ws.onOpen(() => {
-      console.log('[Oracle Status] WebSocket connected');
-      setWsConnected(true);
-    });
-
-    const unsubClose = ws.onClose(() => {
-      console.log('[Oracle Status] WebSocket disconnected');
-      setWsConnected(false);
-    });
-
-    const unsubMessage = ws.onMessage((message) => {
-      if (message.type === 'priceUpdate' && message.data) {
-        message.data.forEach((update: PriceUpdate) => {
-          setLivePrices((prev) => ({
-            ...prev,
-            [update.assetId]: update,
-          }));
-        });
-      }
-    });
-
-    // Subscribe to all assets
-    if (assetsData) {
-      assetsData.forEach((asset) => {
-        ws.subscribe(asset.assetId);
-      });
-    }
-
-    ws.connect();
-
-    return () => {
-      unsubOpen();
-      unsubClose();
-      unsubMessage();
-    };
-  }, [assetsData]);
-
-  // Merge initial prices with live updates
-  const pricesData: LivePriceData[] = initialPrices?.prices || [];
-  const mergedPrices = pricesData.map((price: LivePriceData) => {
-    const liveUpdate = livePrices[price.assetId];
-    return liveUpdate ? { ...price, sources: liveUpdate.sources } : price;
-  });
+  const pricesData: LivePriceData[] = pricesResponse?.prices || [];
 
   // Process oracle data for each asset
   const oracleData: AssetOracleData[] = assetsData?.map((asset) => {
-    const priceData = mergedPrices.find((p: LivePriceData) => p.assetId === asset.assetId);
+    const priceData = pricesData.find((p: LivePriceData) => p.assetId === asset.assetId);
 
     if (!priceData || !priceData.sources) {
       return {
@@ -202,26 +149,12 @@ export default function OracleStatusPage() {
       <div>
         <h2 className="text-3xl font-display text-gold mb-2">Oracle Status</h2>
         <p className="text-muted-foreground">
-          Real-time price feed monitoring and health checks
+          Price feed monitoring and health checks
         </p>
       </div>
 
       {/* Overall Status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="premium-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              WebSocket Status
-            </CardTitle>
-            <Radio className={`h-4 w-4 ${wsConnected ? 'text-success' : 'text-destructive'}`} />
-          </CardHeader>
-          <CardContent>
-            <Badge variant={wsConnected ? 'default' : 'destructive'} className="text-base">
-              {wsConnected ? 'Connected' : 'Disconnected'}
-            </Badge>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="premium-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -358,14 +291,14 @@ export default function OracleStatusPage() {
               <CheckCircle className="h-4 w-4 text-success" />
               <div>
                 <p className="font-semibold">Live</p>
-                <p className="text-muted-foreground text-xs">Updated within last 2 minutes</p>
+                <p className="text-muted-foreground text-xs">Updated within last 10 minutes</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <XCircle className="h-4 w-4 text-destructive" />
               <div>
                 <p className="font-semibold">Stale</p>
-                <p className="text-muted-foreground text-xs">No update for &gt;2 minutes</p>
+                <p className="text-muted-foreground text-xs">No update for &gt;10 minutes</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

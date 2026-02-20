@@ -1,42 +1,39 @@
-import { useEffect, useState } from 'react';
-import { getPriceWebSocket, PriceUpdate } from '@/lib/websocket';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api-client';
+
+interface SourcePrice {
+  price: string;
+  timestamp: number;
+  status: 'ok' | 'stale' | 'error';
+}
+
+export interface LivePriceData {
+  assetId: string;
+  symbol: string;
+  name: string;
+  displayPrice: string;
+  displayPriceRaw: string;
+  sources: {
+    dia?: SourcePrice;
+    pyth?: SourcePrice;
+    redstone?: SourcePrice;
+  };
+  median: string;
+  lastUpdated: number;
+  cacheStatus: 'fresh' | 'stale';
+}
 
 export function useLivePrice(assetId: string | null) {
-  const [price, setPrice] = useState<PriceUpdate | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const { data: price = null, isLoading } = useQuery({
+    queryKey: ['live-price', assetId],
+    queryFn: async () => {
+      const response = await apiClient.getLivePrice(assetId!);
+      return (response.price ?? null) as LivePriceData | null;
+    },
+    enabled: !!assetId,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    if (!assetId) return;
-
-    const ws = getPriceWebSocket();
-
-    const unsubOpen = ws.onOpen(() => {
-      setIsConnected(true);
-    });
-
-    const unsubClose = ws.onClose(() => {
-      setIsConnected(false);
-    });
-
-    const unsubMessage = ws.onMessage((message) => {
-      if (message.type === 'priceUpdate' && message.data) {
-        const update = message.data.find((p) => p.assetId === assetId);
-        if (update) {
-          setPrice(update);
-        }
-      }
-    });
-
-    ws.subscribe(assetId);
-    ws.connect();
-
-    return () => {
-      unsubOpen();
-      unsubClose();
-      unsubMessage();
-      ws.unsubscribe(assetId);
-    };
-  }, [assetId]);
-
-  return { price, isConnected };
+  return { price, isLoading };
 }

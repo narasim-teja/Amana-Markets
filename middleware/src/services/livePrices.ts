@@ -37,8 +37,8 @@ const cache: PriceCache = {
   lastFetch: 0
 };
 
-const CACHE_TTL = parseInt(process.env.LIVE_PRICE_CACHE_TTL || '5000'); // 5 seconds
-const PRICE_STALENESS_THRESHOLD = 600; // 10 minutes (same as relayer)
+const CACHE_TTL = parseInt(process.env.LIVE_PRICE_CACHE_TTL || '60000'); // 60 seconds
+const PRICE_STALENESS_THRESHOLD = 86400; // 24 hours (matches on-chain staleness)
 
 function isPriceStale(timestamp: number): boolean {
   const now = Math.floor(Date.now() / 1000);

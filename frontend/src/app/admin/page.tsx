@@ -21,7 +21,10 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
+  Clock,
+  Zap,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function AdminOverviewPage() {
   // Fetch vault stats
@@ -56,7 +59,7 @@ export default function AdminOverviewPage() {
   const { data: livePrices } = useQuery({
     queryKey: ['prices', 'live'],
     queryFn: () => apiClient.getLivePrices(),
-    refetchInterval: REFETCH_INTERVAL_FAST,
+    refetchInterval: 60_000, // Poll every 60s
   });
 
   // Compute totals from volumeByAsset
@@ -69,6 +72,23 @@ export default function AdminOverviewPage() {
     (sum: number, v: { trade_count?: number }) => sum + (v.trade_count || 0),
     0
   );
+
+  // Oracle health summary
+  const oraclePrices = livePrices?.prices || [];
+  const totalSources = oraclePrices.reduce((sum: number, p: any) => {
+    let count = 0;
+    if (p.sources?.pyth) count++;
+    if (p.sources?.dia) count++;
+    if (p.sources?.redstone) count++;
+    return sum + count;
+  }, 0);
+  const healthySources = oraclePrices.reduce((sum: number, p: any) => {
+    let count = 0;
+    if (p.sources?.pyth?.status === 'ok') count++;
+    if (p.sources?.dia?.status === 'ok') count++;
+    if (p.sources?.redstone?.status === 'ok') count++;
+    return sum + count;
+  }, 0);
 
   return (
     <div className="space-y-8">
@@ -198,41 +218,112 @@ export default function AdminOverviewPage() {
         </CardContent>
       </Card>
 
-      {/* Oracle Status */}
+      {/* Oracle Status - Enhanced */}
       <Card className="premium-card">
         <CardHeader>
-          <CardTitle className="text-xl font-display">Oracle Status</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl font-display">Oracle Status</CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={cn(
+                  'gap-1.5',
+                  healthySources === totalSources && totalSources > 0
+                    ? 'border-emerald-500/30 text-emerald-400'
+                    : healthySources > 0
+                      ? 'border-yellow-500/30 text-yellow-400'
+                      : 'border-red-500/30 text-red-400'
+                )}
+              >
+                <Zap className="h-3 w-3" />
+                {healthySources}/{totalSources} Sources Active
+              </Badge>
+              <Badge variant="outline" className="gap-1.5 border-dark-600 text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                Relayer: 20min cycle
+              </Badge>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {livePrices?.prices?.map((price: any) => (
-              <div key={price.assetId} className="p-4 bg-dark-800/30 rounded-lg">
-                <h4 className="font-semibold mb-3">{price.name}</h4>
-                <div className="space-y-2">
-                  {price.sources?.dia && (
-                    <OracleSourceStatus
-                      name="DIA"
-                      price={price.sources.dia.price}
-                      timestamp={price.sources.dia.timestamp}
-                    />
-                  )}
-                  {price.sources?.redstone && (
-                    <OracleSourceStatus
-                      name="RedStone"
-                      price={price.sources.redstone.price}
-                      timestamp={price.sources.redstone.timestamp}
-                    />
-                  )}
-                  {price.sources?.pyth && (
-                    <OracleSourceStatus
-                      name="Pyth"
-                      price={price.sources.pyth.price}
-                      timestamp={price.sources.pyth.timestamp}
-                    />
-                  )}
+            {oraclePrices.map((price: any) => {
+              const sources = [];
+              if (price.sources?.pyth) sources.push({ name: 'Pyth', ...price.sources.pyth });
+              if (price.sources?.dia) sources.push({ name: 'DIA', ...price.sources.dia });
+              if (price.sources?.redstone) sources.push({ name: 'RedStone', ...price.sources.redstone });
+
+              const activeCount = sources.filter((s) => s.status === 'ok').length;
+              const medianPrice = price.median ? parseFloat(price.median) : 0;
+
+              return (
+                <div key={price.assetId} className="p-4 bg-dark-800/30 rounded-lg space-y-3">
+                  {/* Asset Header */}
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold">{price.name}</h4>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-xs',
+                        activeCount === sources.length
+                          ? 'border-emerald-500/30 text-emerald-400'
+                          : activeCount > 0
+                            ? 'border-yellow-500/30 text-yellow-400'
+                            : 'border-red-500/30 text-red-400'
+                      )}
+                    >
+                      {activeCount}/{sources.length}
+                    </Badge>
+                  </div>
+
+                  {/* Median Price */}
+                  <div className="text-center py-2 bg-dark-900/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-0.5">Median</p>
+                    <p className="font-mono text-lg font-bold text-gold">
+                      ${medianPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    {price.lastUpdated > 0 && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatRelativeTime(price.lastUpdated)}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Sources */}
+                  <div className="space-y-2">
+                    {sources.map((source) => (
+                      <OracleSourceStatus
+                        key={source.name}
+                        name={source.name}
+                        price={source.price}
+                        timestamp={source.timestamp}
+                        status={source.status}
+                      />
+                    ))}
+                    {sources.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">No sources</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+
+          {/* Staleness Info */}
+          <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground border-t border-dark-700 pt-3">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="h-3 w-3 text-emerald-400" />
+              <span>Fresh ({"<"}24h)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <AlertTriangle className="h-3 w-3 text-yellow-400" />
+              <span>Stale ({">"}24h)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <XCircle className="h-3 w-3 text-red-400" />
+              <span>Error</span>
+            </div>
+            <span className="ml-auto">On-chain staleness: 24h | Relayer cycle: 20min</span>
           </div>
         </CardContent>
       </Card>
@@ -254,8 +345,8 @@ export default function AdminOverviewPage() {
         <QuickActionCard
           href="/admin/oracle"
           icon={TrendingUp}
-          title="Oracle Status"
-          description="Monitor price feed health"
+          title="Oracle Details"
+          description="Detailed price feed monitoring"
         />
       </div>
     </div>
@@ -315,18 +406,22 @@ interface OracleSourceStatusProps {
   name: string;
   price: string;
   timestamp: number;
+  status: string;
 }
 
-function OracleSourceStatus({ name, price, timestamp }: OracleSourceStatusProps) {
-  const isStale = isPriceStale(timestamp);
+function OracleSourceStatus({ name, price, timestamp, status }: OracleSourceStatusProps) {
+  const isOk = status === 'ok';
+  const isError = status === 'error';
 
   return (
     <div className="flex items-center justify-between text-sm">
       <div className="flex items-center gap-2">
-        {isStale ? (
-          <XCircle className="h-3 w-3 text-destructive" />
+        {isError ? (
+          <XCircle className="h-3 w-3 text-red-400" />
+        ) : isOk ? (
+          <CheckCircle className="h-3 w-3 text-emerald-400" />
         ) : (
-          <CheckCircle className="h-3 w-3 text-success" />
+          <AlertTriangle className="h-3 w-3 text-yellow-400" />
         )}
         <span className="text-muted-foreground">{name}</span>
       </div>

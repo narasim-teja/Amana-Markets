@@ -26,7 +26,7 @@ export const ADI_DECIMALS = 18;
  * Price staleness threshold (seconds)
  * Prices older than this are considered stale
  */
-export const PRICE_STALENESS_THRESHOLD = 120; // 2 minutes
+export const PRICE_STALENESS_THRESHOLD = 86400; // 24 hours (matches on-chain staleness)
 
 /**
  * Minimum number of oracle sources required
@@ -37,15 +37,6 @@ export const MIN_ORACLE_SOURCES = 1;
  * Maximum acceptable price deviation between sources (bps)
  */
 export const MAX_PRICE_DEVIATION_BPS = 500; // 5%
-
-// ==================== WEBSOCKET SETTINGS ====================
-
-/**
- * WebSocket reconnect settings
- */
-export const WS_MAX_RECONNECT_ATTEMPTS = 5;
-export const WS_INITIAL_RECONNECT_DELAY = 1000; // 1 second
-export const WS_PING_INTERVAL = 30000; // 30 seconds
 
 // ==================== QUERY REFETCH INTERVALS ====================
 
@@ -170,11 +161,6 @@ export const LOADING_DELAY = 300;
  * API base URL (from env or default to localhost)
  */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
-/**
- * WebSocket URL (from env or default to localhost)
- */
-export const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000/ws/prices';
 
 // ==================== EXPLORER LINKS ====================
 
