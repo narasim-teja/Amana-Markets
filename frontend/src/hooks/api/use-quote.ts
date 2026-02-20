@@ -4,7 +4,7 @@ import { CONTRACTS } from '@/lib/contracts';
 import { adiTestnet } from '@/lib/chain';
 
 interface QuoteResult {
-  /** For buy: tokensOut (8 dec). For sell: stablecoinOut (6 dec). */
+  /** For buy: tokensOut (18 dec). For sell: stablecoinOut (6 dec). */
   outputAmount: bigint;
   effectivePrice: bigint;
   spreadBps: bigint;
@@ -54,8 +54,8 @@ export function useQuote(
           transport: http(),
         });
 
-        // Buy: input is mAED (6 decimals).  Sell: input is commodity tokens (8 decimals).
-        const decimals = isBuy ? 6 : 8;
+        // Buy: input is mAED (6 decimals).  Sell: input is commodity tokens (18 decimals).
+        const decimals = isBuy ? 6 : 18;
         const amountWei = parseUnits(amount, decimals);
 
         const functionName = isBuy ? 'quoteBuy' : 'quoteSell';

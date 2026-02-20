@@ -7,7 +7,7 @@ import { REFETCH_INTERVAL_FAST } from '@/lib/constants';
 
 interface Position {
   assetId: string;
-  commodityBalance: string; // Raw BigInt as string (8 decimals) - use formatCommodityPrice() to display
+  commodityBalance: string; // Raw BigInt as string (18 decimals) - use formatCommodityPrice() to display
   costBasis: string; // Raw BigInt as string (6 decimals) - use formatAED() to display
   currentValue: string; // Raw BigInt as string (6 decimals)
   pnl: string; // Profit/Loss in stablecoin

@@ -8,12 +8,12 @@ import { formatUnits, parseUnits } from 'viem';
 // ==================== PRICE FORMATTING ====================
 
 /**
- * Format commodity price (8 decimals)
- * Converts BigInt to human-readable string with 2 decimal places
+ * Format commodity price (18 decimals)
+ * Converts BigInt to human-readable string with 4 decimal places
  */
 export function formatCommodityPrice(value: bigint | string): string {
   const bigIntValue = typeof value === 'string' ? BigInt(value) : value;
-  return parseFloat(formatUnits(bigIntValue, 8)).toFixed(2);
+  return parseFloat(formatUnits(bigIntValue, 18)).toFixed(4);
 }
 
 /**
@@ -34,10 +34,10 @@ export function formatADI(value: bigint | string): string {
 }
 
 /**
- * Parse commodity amount string to BigInt (8 decimals)
+ * Parse commodity amount string to BigInt (18 decimals)
  */
 export function parseCommodityAmount(value: string): bigint {
-  return parseUnits(value, 8);
+  return parseUnits(value, 18);
 }
 
 /**

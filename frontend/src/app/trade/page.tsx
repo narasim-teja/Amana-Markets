@@ -193,8 +193,8 @@ export default function TradePage() {
           args: [selectedAssetId, amountWei],
         });
       } else {
-        // Sell: amount is commodity tokens (8 decimals)
-        const amountWei = parseUnits(amount, 8);
+        // Sell: amount is commodity tokens (18 decimals)
+        const amountWei = parseUnits(amount, 18);
         await executeTrade({
           address: CONTRACTS.TradingEngine.address,
           abi: CONTRACTS.TradingEngine.abi,
@@ -219,11 +219,11 @@ export default function TradePage() {
       : selectedAsset?.color ?? '#C9A96E';
   const displayPrice = hoveredPrice ?? chartPrice;
 
-  // Buy: outputAmount is tokensOut (8 dec). Sell: outputAmount is stablecoinOut (6 dec).
+  // Buy: outputAmount is tokensOut (18 dec). Sell: outputAmount is stablecoinOut (6 dec).
   const outputFormatted =
     quote.outputAmount > BigInt(0)
       ? mode === 'buy'
-        ? parseFloat(formatUnits(quote.outputAmount, 8)).toFixed(4)
+        ? parseFloat(formatUnits(quote.outputAmount, 18)).toFixed(4)
         : parseFloat(formatUnits(quote.outputAmount, 6)).toFixed(2)
       : null;
 
@@ -390,7 +390,7 @@ export default function TradePage() {
                     <button
                       onClick={() =>
                         setAmount(
-                          formatUnits(BigInt(position.commodityBalance), 8)
+                          formatUnits(BigInt(position.commodityBalance), 18)
                         )
                       }
                       className="text-xs text-gold hover:text-gold-light transition-colors cursor-pointer"
@@ -650,7 +650,7 @@ export default function TradePage() {
                       {chartPrice > 0
                         ? `$${(
                             parseFloat(
-                              formatUnits(BigInt(position.commodityBalance), 8)
+                              formatUnits(BigInt(position.commodityBalance), 18)
                             ) * chartPrice
                           ).toFixed(2)}`
                         : '--'}
