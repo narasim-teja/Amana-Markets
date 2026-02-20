@@ -6,6 +6,7 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {UserRegistry} from "../access/UserRegistry.sol";
 
 /// @title LiquidityVault
 /// @notice Holds stablecoin (mAED) deposits from LPs. Tracks exposure per asset
@@ -16,6 +17,7 @@ contract LiquidityVault is Ownable2Step, ReentrancyGuard {
 
     IERC20 public immutable stablecoin;
     address public tradingEngine;
+    UserRegistry public userRegistry;
 
     // --- LP Share Accounting ---
     mapping(address => uint256) public lpShares;
@@ -35,6 +37,7 @@ contract LiquidityVault is Ownable2Step, ReentrancyGuard {
     event ExposureUpdated(bytes32 indexed assetId, uint256 assetExposure, uint256 totalExposure);
     event TradingEngineSet(address indexed engine);
     event MaxUtilizationUpdated(uint256 newMaxBps);
+    event UserRegistryUpdated(address indexed registry);
 
     // --- Errors ---
     error OnlyTradingEngine();
@@ -43,6 +46,16 @@ contract LiquidityVault is Ownable2Step, ReentrancyGuard {
     error InsufficientLiquidity(uint256 requested, uint256 available);
     error ZeroAddress();
     error InvalidUtilization();
+    error UserNotWhitelisted(address user);
+
+    modifier onlyWhitelisted() {
+        if (address(userRegistry) != address(0)) {
+            if (!userRegistry.isWhitelisted(msg.sender)) {
+                revert UserNotWhitelisted(msg.sender);
+            }
+        }
+        _;
+    }
 
     modifier onlyTradingEngine() {
         if (msg.sender != tradingEngine) revert OnlyTradingEngine();
@@ -57,7 +70,7 @@ contract LiquidityVault is Ownable2Step, ReentrancyGuard {
     // ========== LP Functions ==========
 
     /// @notice Deposit stablecoin and receive LP shares
-    function deposit(uint256 amount) external nonReentrant returns (uint256 shares) {
+    function deposit(uint256 amount) external nonReentrant onlyWhitelisted returns (uint256 shares) {
         if (amount == 0) revert ZeroAmount();
 
         uint256 totalAssetsBefore = totalAssets();
@@ -182,5 +195,12 @@ contract LiquidityVault is Ownable2Step, ReentrancyGuard {
         if (newMaxBps == 0 || newMaxBps > BPS_DENOMINATOR) revert InvalidUtilization();
         maxUtilizationBps = newMaxBps;
         emit MaxUtilizationUpdated(newMaxBps);
+    }
+
+    /// @notice Set or update the UserRegistry for whitelist checks on deposits.
+    ///         Set to address(0) to disable whitelist enforcement.
+    function setUserRegistry(address registry_) external onlyOwner {
+        userRegistry = UserRegistry(registry_);
+        emit UserRegistryUpdated(registry_);
     }
 }

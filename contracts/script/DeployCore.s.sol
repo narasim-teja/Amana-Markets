@@ -8,6 +8,7 @@ import {AssetRegistry} from "../src/core/AssetRegistry.sol";
 import {LiquidityVault} from "../src/core/LiquidityVault.sol";
 import {TradingEngine} from "../src/core/TradingEngine.sol";
 import {AssetIds} from "../src/libraries/AssetIds.sol";
+import {UserRegistry} from "../src/access/UserRegistry.sol";
 
 /// @title DeployCore
 /// @notice Deploys all Step 2 contracts and wires them together.
@@ -40,10 +41,15 @@ contract DeployCore is Script {
             new TradingEngine(deployer, oracleRouter, address(vault), address(registry), address(mockDirham));
         console.log("TradingEngine: ", address(engine));
 
+        UserRegistry userRegistry = new UserRegistry(deployer);
+        console.log("UserRegistry:  ", address(userRegistry));
+
         // --- Wire up ---
         factory.setAuthorizedCreator(address(registry));
         registry.setTradingEngine(address(engine));
         vault.setTradingEngine(address(engine));
+        engine.setUserRegistry(address(userRegistry));
+        vault.setUserRegistry(address(userRegistry));
 
         // --- Add assets ---
         registry.addAsset(AssetIds.GOLD, "Gold", "xGOLD", 30, 4000, 500);

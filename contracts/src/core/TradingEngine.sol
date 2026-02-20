@@ -14,6 +14,7 @@ import {LiquidityVault} from "./LiquidityVault.sol";
 import {AssetRegistry} from "./AssetRegistry.sol";
 import {CommodityToken} from "../tokens/CommodityToken.sol";
 import {PriceLib} from "../libraries/PriceLib.sol";
+import {UserRegistry} from "../access/UserRegistry.sol";
 
 /// @title TradingEngine
 /// @notice Main entry point for buying/selling tokenized commodities.
@@ -28,6 +29,9 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
     LiquidityVault public immutable vault;
     AssetRegistry public immutable registry;
     IERC20 public immutable stablecoin;
+
+    // --- User Registry (opt-in whitelist) ---
+    UserRegistry public userRegistry;
 
     // --- FX Rate (USD → local stablecoin) ---
     /// @notice Stablecoin units per 1 USD, 8 decimals.
@@ -68,6 +72,7 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
     );
     event FxRateUpdated(uint256 oldRate, uint256 newRate);
     event SpreadScalingUpdated(uint256 newFactor);
+    event UserRegistryUpdated(address indexed registry);
 
     // --- Errors ---
     error AssetNotActive(bytes32 assetId);
@@ -75,6 +80,16 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
     error InsufficientLiquidity();
     error ZeroAmount();
     error ZeroFxRate();
+    error UserNotWhitelisted(address user);
+
+    modifier onlyWhitelisted() {
+        if (address(userRegistry) != address(0)) {
+            if (!userRegistry.isWhitelisted(msg.sender)) {
+                revert UserNotWhitelisted(msg.sender);
+            }
+        }
+        _;
+    }
 
     constructor(
         address initialOwner,
@@ -99,6 +114,7 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
         external
         whenNotPaused
         nonReentrant
+        onlyWhitelisted
         returns (uint256 tokensReceived)
     {
         if (stablecoinAmount == 0) revert ZeroAmount();
@@ -166,6 +182,7 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
         external
         whenNotPaused
         nonReentrant
+        onlyWhitelisted
         returns (uint256 stablecoinReceived)
     {
         if (tokenAmount == 0) revert ZeroAmount();
@@ -330,5 +347,12 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
     function setSpreadScalingFactor(uint256 factor) external onlyOwner {
         spreadScalingFactor = factor;
         emit SpreadScalingUpdated(factor);
+    }
+
+    /// @notice Set or update the UserRegistry for whitelist checks.
+    ///         Set to address(0) to disable whitelist enforcement.
+    function setUserRegistry(address registry_) external onlyOwner {
+        userRegistry = UserRegistry(registry_);
+        emit UserRegistryUpdated(registry_);
     }
 }
