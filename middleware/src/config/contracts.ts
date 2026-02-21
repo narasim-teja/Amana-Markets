@@ -25,6 +25,10 @@ export const CONTRACTS = {
     address: process.env.REDSTONE_ADAPTER as `0x${string}`,
     abi: RedStoneAdapterAbi
   },
+  ManualAdapter: {
+    address: process.env.MANUAL_ORACLE_ADAPTER as `0x${string}`,
+    abi: PythAdapterAbi // Same RelayedOracleAdapter interface (updatePrice, getPrice)
+  },
   TradingEngine: {
     address: process.env.TRADING_ENGINE as `0x${string}`,
     abi: TradingEngineAbi

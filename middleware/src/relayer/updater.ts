@@ -1,13 +1,14 @@
 import { publicClient, walletClient } from '../lib/viem';
 import { CONTRACTS } from '../config/contracts';
-import { PriceData } from '../lib/types';
+import type { PriceData } from '../lib/types';
 import { PRICE_STALENESS_SECONDS } from '../config/oracles';
 import { isStale } from '../lib/utils';
 
 const ADAPTER_MAP: Record<string, any> = {
   'Pyth': CONTRACTS.PythAdapter,
   'DIA': CONTRACTS.DIAAdapter,
-  'RedStone': CONTRACTS.RedStoneAdapter
+  'RedStone': CONTRACTS.RedStoneAdapter,
+  'Yahoo': CONTRACTS.ManualAdapter,
 };
 
 export async function updatePriceOnChain(priceData: PriceData): Promise<void> {
@@ -54,7 +55,7 @@ export async function updatePriceOnChain(priceData: PriceData): Promise<void> {
 
     // Wait for confirmation (with timeout handling)
     try {
-      await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 }); // 30 second timeout
+      await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 });
       console.log(`  ✓ Confirmed`);
     } catch (timeoutError) {
       console.warn(`  ⚠️  Confirmation timeout (tx may still succeed later)`);

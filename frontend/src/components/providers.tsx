@@ -7,13 +7,14 @@
 
 import { PrivyProvider } from '@privy-io/react-auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { adiTestnet } from '@/lib/chain';
 import {
   REFETCH_INTERVAL_FAST,
   REFETCH_INTERVAL_MEDIUM,
   STALE_TIME_DEFAULT,
 } from '@/lib/constants';
+import { initContracts } from '@/lib/contracts';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create QueryClient with optimized defaults
@@ -33,6 +34,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       })
   );
+
+  // Fetch contract addresses from middleware API on app startup.
+  // The CONTRACTS object is already usable (with env fallback values) before
+  // this resolves; the fetch simply overwrites the addresses in place.
+  useEffect(() => {
+    initContracts();
+  }, []);
 
   return (
     <PrivyProvider

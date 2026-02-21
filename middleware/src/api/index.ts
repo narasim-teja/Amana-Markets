@@ -3,10 +3,11 @@ import { cors } from 'hono/cors';
 import prices from './routes/prices';
 import assets from './routes/assets';
 import trades from './routes/trades';
-import vault from './routes/vault';
+import treasury from './routes/treasury';
 import users from './routes/users';
 import analytics from './routes/analytics';
 import health from './routes/health';
+import config from './routes/config';
 
 const app = new Hono();
 
@@ -17,10 +18,11 @@ app.use('/*', cors());
 app.route('/prices', prices);
 app.route('/assets', assets);
 app.route('/trades', trades);
-app.route('/vault', vault);
+app.route('/treasury', treasury);
 app.route('/users', users);
 app.route('/analytics', analytics);
 app.route('/health', health);
+app.route('/config', config);
 
 // Root
 app.get('/', (c) => c.json({
@@ -31,10 +33,11 @@ app.get('/', (c) => c.json({
     '/prices/live',
     '/assets',
     '/trades',
-    '/vault',
+    '/treasury',
     '/users',
     '/analytics',
-    '/health'
+    '/health',
+    '/config'
   ]
 }));
 

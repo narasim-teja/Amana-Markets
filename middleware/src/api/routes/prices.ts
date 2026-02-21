@@ -5,6 +5,7 @@ import { CONTRACTS } from '../../config/contracts';
 import { getLivePrices } from '../../services/livePrices';
 import { formatPrice } from '../../lib/utils';
 import { getAssetById } from '../../config/assets';
+import type { AssetCategory } from '../../config/assets';
 
 const app = new Hono();
 
@@ -36,7 +37,7 @@ app.get('/live/compare/:assetId', async (c) => {
       return c.json({ error: 'Asset not found' }, 404);
     }
 
-    const livePrice = livePrices[0];
+    const livePrice = livePrices[0]!;
 
     // Fetch on-chain execution price
     const result = await publicClient.readContract({
@@ -98,13 +99,15 @@ app.get('/live/:assetId', async (c) => {
   }
 });
 
-// GET /prices/live - All assets, real-time from oracle APIs
+// GET /prices/live - All assets, real-time from oracle APIs (supports ?category= filter)
 app.get('/live', async (c) => {
   try {
-    const livePrices = await getLivePrices();
+    const category = c.req.query('category') as AssetCategory | undefined;
+    const livePrices = await getLivePrices(undefined, category);
 
     return c.json({
       prices: livePrices,
+      count: livePrices.length,
       disclaimer: 'Display prices only. Execution uses on-chain verified prices.',
       timestamp: Date.now()
     });
@@ -142,11 +145,14 @@ app.get('/median/:assetId', async (c) => {
   });
 });
 
-// Pyth TradingView symbol mapping per asset
+// Pyth TradingView symbol mapping for chart data
 const PYTH_TV_SYMBOLS: Record<string, string> = {
   XAU: 'Metal.XAU/USD',
   XAG: 'Metal.XAG/USD',
+  XPT: 'Metal.XPT/USD',
+  XPD: 'Metal.XPD/USD',
   WTI: 'Commodities.USOILSPOT',
+  BRT: 'Commodities.UKOILSPOT',
 };
 
 // GET /prices/:assetId/history - Historical price data from Pyth Benchmarks API
@@ -173,7 +179,7 @@ app.get('/:assetId/history', async (c) => {
       '30d': { resolution: '120', seconds: 2592000 },
     };
 
-    const config = rangeConfig[range] || rangeConfig['24h'];
+    const config = rangeConfig[range] ?? rangeConfig['24h']!;
     const now = Math.floor(Date.now() / 1000);
     const from = now - config.seconds;
 
@@ -195,7 +201,7 @@ app.get('/:assetId/history', async (c) => {
     };
 
     if (data.s !== 'ok' || !data.t || data.t.length === 0) {
-      return c.json({ assetId, range, interval: config.resolution, source: 'Pyth', prices: [] });
+      return c.json({ assetId, range, interval: config!.resolution, source: 'Pyth', prices: [] });
     }
 
     // Use close prices for the chart
@@ -204,7 +210,7 @@ app.get('/:assetId/history', async (c) => {
       price: data.c[i],
     }));
 
-    return c.json({ assetId, range, interval: config.resolution, source: 'Pyth', prices });
+    return c.json({ assetId, range, interval: config!.resolution, source: 'Pyth', prices });
   } catch (error) {
     console.error('Error fetching price history:', error);
     return c.json({ error: 'Failed to fetch price history' }, 500);

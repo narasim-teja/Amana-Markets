@@ -108,7 +108,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatsCard
               title="Total Volume"
-              value={`${formatCompactNumber(totalVolume / 1e6)} mAED`}
+              value={`${formatCompactNumber(totalVolume / 1e6)} DDSC`}
               icon={TrendingUp}
               loading={volumeLoading}
             />
@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
             />
             <StatsCard
               title="Total Fees"
-              value={`${formatAED(feesData?.totalFees || '0')} mAED`}
+              value={`${formatAED(feesData?.totalFees || '0')} DDSC`}
               icon={DollarSign}
               loading={feesLoading}
             />
@@ -172,7 +172,7 @@ export default function AnalyticsPage() {
                         <div className="flex justify-between items-baseline">
                           <span className="text-sm text-muted-foreground">Volume</span>
                           <span className="font-mono font-semibold">
-                            {formatCompactNumber(assetVolume / 1e6)} mAED
+                            {formatCompactNumber(assetVolume / 1e6)} DDSC
                           </span>
                         </div>
                         <div className="flex justify-between items-baseline">
@@ -205,7 +205,7 @@ export default function AnalyticsPage() {
                 <div className="p-4 bg-dark-800/30 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">Total Fees (All Time)</p>
                   <p className="number-display">
-                    {formatAED(feesData?.totalFees || '0')} mAED
+                    {formatAED(feesData?.totalFees || '0')} DDSC
                   </p>
                 </div>
                 <div className="p-4 bg-dark-800/30 rounded-lg">
@@ -216,7 +216,7 @@ export default function AnalyticsPage() {
                           Math.floor(parseInt(feesData.totalFees) / totalTradeCount).toString()
                         )
                       : '0.00'}{' '}
-                    mAED
+                    DDSC
                   </p>
                 </div>
                 <div className="p-4 bg-dark-800/30 rounded-lg">
@@ -244,7 +244,7 @@ export default function AnalyticsPage() {
                       <TableHead>Rank</TableHead>
                       <TableHead>Address</TableHead>
                       <TableHead className="text-right">Trades</TableHead>
-                      <TableHead className="text-right">Volume (mAED)</TableHead>
+                      <TableHead className="text-right">Volume (DDSC)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

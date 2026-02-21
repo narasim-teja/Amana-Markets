@@ -17,7 +17,7 @@ export function formatCommodityPrice(value: bigint | string): string {
 }
 
 /**
- * Format mAED amount (6 decimals)
+ * Format DDSC (Dubai Digital Stablecoin) amount (6 decimals)
  * Converts BigInt to human-readable string with 2 decimal places
  */
 export function formatAED(value: bigint | string): string {
@@ -41,7 +41,7 @@ export function parseCommodityAmount(value: string): bigint {
 }
 
 /**
- * Parse AED amount string to BigInt (6 decimals)
+ * Parse DDSC amount string to BigInt (6 decimals)
  */
 export function parseAEDAmount(value: string): bigint {
   return parseUnits(value, 6);

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, Shield, Wallet, Activity } from 'lucide-react';
+import { TrendingUp, Shield, Activity } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -16,7 +16,7 @@ export default function HomePage() {
             Institutional-Grade Commodity Trading
           </p>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Trade tokenized gold, silver, and oil with real-time oracle pricing on the ADI
+            Trade tokenized gold, silver, and oil with real-time pricing on the ADI
             blockchain
           </p>
         </div>
@@ -29,22 +29,16 @@ export default function HomePage() {
               Start Trading
             </Button>
           </Link>
-          <Link href="/vault">
-            <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-              <Wallet className="h-5 w-5 mr-2" />
-              Provide Liquidity
-            </Button>
-          </Link>
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-20">
           <Card className="premium-card">
             <CardContent className="pt-6 text-center">
               <Activity className="h-10 w-10 text-gold mx-auto mb-4" />
               <h3 className="font-display text-xl mb-2">Real-Time Pricing</h3>
               <p className="text-sm text-muted-foreground">
-                Multi-oracle aggregation from Pyth, DIA, and RedStone
+                Multi-source price aggregation from Pyth, DIA, and RedStone
               </p>
             </CardContent>
           </Card>
@@ -55,16 +49,6 @@ export default function HomePage() {
               <h3 className="font-display text-xl mb-2">Institutional Security</h3>
               <p className="text-sm text-muted-foreground">
                 KYC whitelisting and compliance-first architecture
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="premium-card">
-            <CardContent className="pt-6 text-center">
-              <Wallet className="h-10 w-10 text-gold mx-auto mb-4" />
-              <h3 className="font-display text-xl mb-2">Earn Fees</h3>
-              <p className="text-sm text-muted-foreground">
-                Provide liquidity to the vault and earn trading fees
               </p>
             </CardContent>
           </Card>

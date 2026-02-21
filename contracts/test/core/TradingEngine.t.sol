@@ -13,7 +13,7 @@ contract TradingEngineTest is CoreTestSetup {
         uint256 spendAmount = 3672_500000; // 3672.5 mAED ≈ $1000
 
         vm.prank(trader1);
-        uint256 tokensReceived = tradingEngine.buy(AssetIds.GOLD, spendAmount);
+        uint256 tokensReceived = tradingEngine.buy(AssetIds.GOLD, spendAmount, 0);
 
         assertTrue(tokensReceived > 0);
         assertEq(goldToken.balanceOf(trader1), tokensReceived);
@@ -25,11 +25,11 @@ contract TradingEngineTest is CoreTestSetup {
 
         // Buy first
         vm.prank(trader1);
-        uint256 tokensBought = tradingEngine.buy(AssetIds.GOLD, spendAmount);
+        uint256 tokensBought = tradingEngine.buy(AssetIds.GOLD, spendAmount, 0);
 
         // Sell all
         vm.prank(trader1);
-        uint256 stablecoinReceived = tradingEngine.sell(AssetIds.GOLD, tokensBought);
+        uint256 stablecoinReceived = tradingEngine.sell(AssetIds.GOLD, tokensBought, 0);
 
         assertTrue(stablecoinReceived > 0);
         // Should get less than spent due to buy+sell spread
@@ -43,13 +43,13 @@ contract TradingEngineTest is CoreTestSetup {
 
         vm.prank(trader1);
         vm.expectRevert();
-        tradingEngine.buy(AssetIds.GOLD, 1000e6);
+        tradingEngine.buy(AssetIds.GOLD, 1000e6, 0);
     }
 
     function test_buy_reverts_zero_amount() public {
         vm.prank(trader1);
         vm.expectRevert(TradingEngine.ZeroAmount.selector);
-        tradingEngine.buy(AssetIds.GOLD, 0);
+        tradingEngine.buy(AssetIds.GOLD, 0, 0);
     }
 
     function test_buy_reverts_inactive_asset() public {
@@ -58,7 +58,7 @@ contract TradingEngineTest is CoreTestSetup {
 
         vm.prank(trader1);
         vm.expectRevert(abi.encodeWithSelector(TradingEngine.AssetNotActive.selector, AssetIds.GOLD));
-        tradingEngine.buy(AssetIds.GOLD, 1000e6);
+        tradingEngine.buy(AssetIds.GOLD, 1000e6, 0);
     }
 
     function test_buy_reverts_stale_oracle() public {
@@ -67,13 +67,13 @@ contract TradingEngineTest is CoreTestSetup {
 
         vm.prank(trader1);
         vm.expectRevert(); // AllSourcesStale from OracleRouter
-        tradingEngine.buy(AssetIds.GOLD, 1000e6);
+        tradingEngine.buy(AssetIds.GOLD, 1000e6, 0);
     }
 
     function test_sell_reverts_insufficient_liquidity() public {
         // Buy some gold
         vm.prank(trader1);
-        uint256 tokensBought = tradingEngine.buy(AssetIds.GOLD, 1000e6);
+        uint256 tokensBought = tradingEngine.buy(AssetIds.GOLD, 1000e6, 0);
 
         // Drain vault by pranking as TradingEngine and calling transferOut
         uint256 vaultBalance = mockDirham.balanceOf(address(liquidityVault));
@@ -83,7 +83,7 @@ contract TradingEngineTest is CoreTestSetup {
         // Try to sell — vault doesn't have enough stablecoin
         vm.prank(trader1);
         vm.expectRevert(TradingEngine.InsufficientLiquidity.selector);
-        tradingEngine.sell(AssetIds.GOLD, tokensBought);
+        tradingEngine.sell(AssetIds.GOLD, tokensBought, 0);
     }
 
     function test_spread_increases_with_utilization() public {
@@ -92,7 +92,7 @@ contract TradingEngineTest is CoreTestSetup {
         // Create significant utilization by buying a lot
         uint256 bigTrade = 20_000e6;
         vm.prank(trader1);
-        tradingEngine.buy(AssetIds.GOLD, bigTrade);
+        tradingEngine.buy(AssetIds.GOLD, bigTrade, 0);
 
         uint256 spreadAfter = tradingEngine.currentSpread(AssetIds.GOLD);
         assertTrue(spreadAfter >= spreadBefore, "Spread should increase with utilization");
@@ -101,10 +101,10 @@ contract TradingEngineTest is CoreTestSetup {
     function test_quoteBuy_matches_actual() public {
         uint256 amount = 5000e6;
 
-        (uint256 quotedTokens,,,) = tradingEngine.quoteBuy(AssetIds.GOLD, amount);
+        (uint256 quotedTokens,,,) = tradingEngine.quoteBuy(AssetIds.GOLD, amount, 0);
 
         vm.prank(trader1);
-        uint256 actualTokens = tradingEngine.buy(AssetIds.GOLD, amount);
+        uint256 actualTokens = tradingEngine.buy(AssetIds.GOLD, amount, 0);
 
         assertEq(quotedTokens, actualTokens, "Quote should match actual");
     }
@@ -112,12 +112,12 @@ contract TradingEngineTest is CoreTestSetup {
     function test_quoteSell_matches_actual() public {
         // Buy first
         vm.prank(trader1);
-        uint256 tokensBought = tradingEngine.buy(AssetIds.GOLD, 5000e6);
+        uint256 tokensBought = tradingEngine.buy(AssetIds.GOLD, 5000e6, 0);
 
-        (uint256 quotedStablecoin,,,) = tradingEngine.quoteSell(AssetIds.GOLD, tokensBought);
+        (uint256 quotedStablecoin,,,) = tradingEngine.quoteSell(AssetIds.GOLD, tokensBought, 0);
 
         vm.prank(trader1);
-        uint256 actualStablecoin = tradingEngine.sell(AssetIds.GOLD, tokensBought);
+        uint256 actualStablecoin = tradingEngine.sell(AssetIds.GOLD, tokensBought, 0);
 
         assertEq(quotedStablecoin, actualStablecoin, "Quote should match actual");
     }
@@ -126,7 +126,7 @@ contract TradingEngineTest is CoreTestSetup {
         uint256 amount = 5000e6;
 
         vm.prank(trader1);
-        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, amount);
+        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, amount, 0);
 
         (uint256 posTokens, uint256 costBasis,,) = tradingEngine.getPosition(trader1, AssetIds.GOLD);
         assertEq(posTokens, tokens);
@@ -137,12 +137,12 @@ contract TradingEngineTest is CoreTestSetup {
         uint256 buyAmount = 10_000e6;
 
         vm.prank(trader1);
-        uint256 tokensBought = tradingEngine.buy(AssetIds.GOLD, buyAmount);
+        uint256 tokensBought = tradingEngine.buy(AssetIds.GOLD, buyAmount, 0);
 
         // Sell half
         uint256 sellAmount = tokensBought / 2;
         vm.prank(trader1);
-        tradingEngine.sell(AssetIds.GOLD, sellAmount);
+        tradingEngine.sell(AssetIds.GOLD, sellAmount, 0);
 
         (uint256 posTokens, uint256 costBasis,,) = tradingEngine.getPosition(trader1, AssetIds.GOLD);
         assertEq(posTokens, tokensBought - sellAmount);
@@ -152,7 +152,7 @@ contract TradingEngineTest is CoreTestSetup {
 
     function test_fee_tracking() public {
         vm.prank(trader1);
-        tradingEngine.buy(AssetIds.GOLD, 5000e6);
+        tradingEngine.buy(AssetIds.GOLD, 5000e6, 0);
 
         assertTrue(tradingEngine.totalFeesCollected() > 0);
         assertTrue(tradingEngine.feesPerAsset(AssetIds.GOLD) > 0);
@@ -169,7 +169,7 @@ contract TradingEngineTest is CoreTestSetup {
         // Buy with 1000 "mAED" (now = $1000)
         uint256 amount = 1000e6;
         vm.prank(trader1);
-        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, amount);
+        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, amount, 0);
         assertTrue(tokens > 0);
     }
 
@@ -181,9 +181,9 @@ contract TradingEngineTest is CoreTestSetup {
 
     function test_buy_multiple_assets() public {
         vm.startPrank(trader1);
-        uint256 goldTokens = tradingEngine.buy(AssetIds.GOLD, 5000e6);
-        uint256 silverTokens = tradingEngine.buy(AssetIds.SILVER, 3000e6);
-        uint256 oilTokens = tradingEngine.buy(AssetIds.OIL, 2000e6);
+        uint256 goldTokens = tradingEngine.buy(AssetIds.GOLD, 5000e6, 0);
+        uint256 silverTokens = tradingEngine.buy(AssetIds.SILVER, 3000e6, 0);
+        uint256 oilTokens = tradingEngine.buy(AssetIds.OIL, 2000e6, 0);
         vm.stopPrank();
 
         assertTrue(goldTokens > 0);
@@ -208,7 +208,7 @@ contract TradingEngineTest is CoreTestSetup {
         // Big buy: ~$10k worth of gold in AED (within 5% single trade limit of 5.5M vault)
         uint256 bigAmount = 36_725e6; // 36,725 mAED ≈ $10k
         vm.prank(trader1);
-        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, bigAmount);
+        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, bigAmount, 0);
 
         // At $2650/oz with 3.6725 AED/USD: ~$10k / $2650 ≈ 3.77 oz
         // With spread it should be slightly less
@@ -221,7 +221,7 @@ contract TradingEngineTest is CoreTestSetup {
         uint256 smallAmount = 36_725000; // 36.725 mAED ≈ $10
 
         vm.prank(trader1);
-        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, smallAmount);
+        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, smallAmount, 0);
 
         // $10 / $2650 ≈ 0.00377 oz
         assertTrue(tokens > 0, "Should get some tokens even for small amount");

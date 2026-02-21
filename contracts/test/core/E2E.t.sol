@@ -19,7 +19,7 @@ contract E2ETest is CoreTestSetup {
         // --- Trader1 buys gold ---
         uint256 buyAmount = 10_000e6; // 10k mAED
         vm.prank(trader1);
-        uint256 goldReceived = tradingEngine.buy(AssetIds.GOLD, buyAmount);
+        uint256 goldReceived = tradingEngine.buy(AssetIds.GOLD, buyAmount, 0);
         assertTrue(goldReceived > 0);
 
         // Vault should have received the mAED
@@ -27,7 +27,7 @@ contract E2ETest is CoreTestSetup {
 
         // --- Trader1 sells gold ---
         vm.prank(trader1);
-        uint256 stablecoinBack = tradingEngine.sell(AssetIds.GOLD, goldReceived);
+        uint256 stablecoinBack = tradingEngine.sell(AssetIds.GOLD, goldReceived, 0);
 
         // Should get less than spent (buy spread + sell spread)
         assertTrue(stablecoinBack < buyAmount, "Should lose to spread");
@@ -49,9 +49,9 @@ contract E2ETest is CoreTestSetup {
     /// @notice Multiple assets traded concurrently
     function test_multiple_assets_concurrent() public {
         vm.startPrank(trader1);
-        uint256 goldTokens = tradingEngine.buy(AssetIds.GOLD, 5000e6);
-        uint256 silverTokens = tradingEngine.buy(AssetIds.SILVER, 3000e6);
-        uint256 oilTokens = tradingEngine.buy(AssetIds.OIL, 2000e6);
+        uint256 goldTokens = tradingEngine.buy(AssetIds.GOLD, 5000e6, 0);
+        uint256 silverTokens = tradingEngine.buy(AssetIds.SILVER, 3000e6, 0);
+        uint256 oilTokens = tradingEngine.buy(AssetIds.OIL, 2000e6, 0);
         vm.stopPrank();
 
         // All positions should exist
@@ -81,7 +81,7 @@ contract E2ETest is CoreTestSetup {
         // Trader buys gold at $2650
         uint256 buyAmount = 10_000e6;
         vm.prank(trader1);
-        uint256 goldReceived = tradingEngine.buy(AssetIds.GOLD, buyAmount);
+        uint256 goldReceived = tradingEngine.buy(AssetIds.GOLD, buyAmount, 0);
 
         // Price rises to $2750 (+~3.8%)
         vm.prank(admin);
@@ -90,7 +90,7 @@ contract E2ETest is CoreTestSetup {
 
         // Trader sells at the higher price
         vm.prank(trader1);
-        uint256 sellProceeds = tradingEngine.sell(AssetIds.GOLD, goldReceived);
+        uint256 sellProceeds = tradingEngine.sell(AssetIds.GOLD, goldReceived, 0);
 
         // Trader profits: sell proceeds > buy cost (price rose ~3.8%, spread ~0.6%)
         assertTrue(sellProceeds > buyAmount, "Trader should profit when price rises");
@@ -107,7 +107,7 @@ contract E2ETest is CoreTestSetup {
         // Trader buys gold at $2650
         uint256 buyAmount = 10_000e6;
         vm.prank(trader1);
-        uint256 goldReceived = tradingEngine.buy(AssetIds.GOLD, buyAmount);
+        uint256 goldReceived = tradingEngine.buy(AssetIds.GOLD, buyAmount, 0);
 
         // Price drops to $2550 (~-3.8%)
         vm.prank(admin);
@@ -116,7 +116,7 @@ contract E2ETest is CoreTestSetup {
 
         // Trader sells at lower price
         vm.prank(trader1);
-        uint256 sellProceeds = tradingEngine.sell(AssetIds.GOLD, goldReceived);
+        uint256 sellProceeds = tradingEngine.sell(AssetIds.GOLD, goldReceived, 0);
 
         // Trader loses
         assertTrue(sellProceeds < buyAmount, "Trader should lose when price drops");
@@ -131,7 +131,7 @@ contract E2ETest is CoreTestSetup {
         // Buy in AED mode (default 3.6725)
         uint256 aedAmount = 3672_500000; // 3672.5 mAED ≈ $1000
         vm.prank(trader1);
-        uint256 tokensAed = tradingEngine.buy(AssetIds.GOLD, aedAmount);
+        uint256 tokensAed = tradingEngine.buy(AssetIds.GOLD, aedAmount, 0);
 
         // Switch to USD mode
         vm.prank(admin);
@@ -140,7 +140,7 @@ contract E2ETest is CoreTestSetup {
         // Now 1 mAED = $1. Same dollar value should give same tokens.
         uint256 usdAmount = 1000e6; // 1000 mAED = $1000 in USD mode
         vm.prank(trader2);
-        uint256 tokensUsd = tradingEngine.buy(AssetIds.GOLD, usdAmount);
+        uint256 tokensUsd = tradingEngine.buy(AssetIds.GOLD, usdAmount, 0);
 
         // Both represent ~$1000 worth of gold, should get approximately same tokens
         // (slight difference due to utilization-based spread change between trades)
@@ -150,13 +150,13 @@ contract E2ETest is CoreTestSetup {
     /// @notice Two traders, multiple trades, verify fee accumulation
     function test_fee_accumulation() public {
         vm.prank(trader1);
-        tradingEngine.buy(AssetIds.GOLD, 5000e6);
+        tradingEngine.buy(AssetIds.GOLD, 5000e6, 0);
 
         vm.prank(trader2);
-        tradingEngine.buy(AssetIds.SILVER, 3000e6);
+        tradingEngine.buy(AssetIds.SILVER, 3000e6, 0);
 
         vm.prank(trader1);
-        tradingEngine.buy(AssetIds.OIL, 2000e6);
+        tradingEngine.buy(AssetIds.OIL, 2000e6, 0);
 
         assertEq(tradingEngine.totalTradeCount(), 3);
         assertTrue(tradingEngine.totalFeesCollected() > 0);

@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Vault Management Page
- * Monitor vault health, utilization, and LP positions
+ * Treasury Dashboard
+ * Monitor treasury health, capital utilization, and positions
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +14,7 @@ import { enrichAssetWithMetadata, type ApiAsset, getAssetMetadata } from '@/lib/
 import { formatCompactNumber, formatAED, shortenAddress } from '@/lib/format';
 import { REFETCH_INTERVAL_FAST } from '@/lib/constants';
 import {
-  Wallet,
+  Landmark,
   TrendingUp,
   Shield,
   DollarSign,
@@ -24,20 +24,20 @@ import {
 } from 'lucide-react';
 import type { Trade } from '@/types/api';
 
-export default function VaultManagementPage() {
-  // Fetch vault stats
+export default function TreasuryDashboardPage() {
+  // Fetch treasury stats
   // API returns: { totalAssets, utilization, availableLiquidity }
-  const { data: vaultStats, isLoading: vaultLoading } = useQuery({
-    queryKey: ['vaultStats'],
-    queryFn: () => apiClient.getVaultStats(),
+  const { data: treasuryStats, isLoading: treasuryLoading } = useQuery({
+    queryKey: ['treasuryStats'],
+    queryFn: () => apiClient.getTreasuryStats(),
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
-  // Fetch vault exposure separately
+  // Fetch treasury exposure separately
   // API returns: { totalExposure, assetExposures: [{ asset_id, asset_exposure }] }
   const { data: exposureData } = useQuery({
-    queryKey: ['vaultExposure'],
-    queryFn: () => apiClient.getVaultExposure(),
+    queryKey: ['treasuryExposure'],
+    queryFn: () => apiClient.getTreasuryExposure(),
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
@@ -52,29 +52,29 @@ export default function VaultManagementPage() {
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
-  // Fetch trades to get vault activity
+  // Fetch trades to get treasury activity
   const { data: tradesData } = useQuery({
     queryKey: ['trades', 'recent'],
     queryFn: () => apiClient.getTrades({ limit: 100 }),
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
-  const utilization = vaultStats?.utilization || 0;
+  const utilization = treasuryStats?.utilization || 0;
   const isHealthy = utilization < 80;
   const isWarning = utilization >= 80 && utilization < 90;
   const isDanger = utilization >= 90;
 
-  const totalAssets = parseFloat(vaultStats?.totalAssets || '0') / 1e6;
+  const totalAssets = parseFloat(treasuryStats?.totalAssets || '0') / 1e6;
   const totalExposure = parseFloat(exposureData?.totalExposure || '0') / 1e6;
-  const availableLiquidity = parseFloat(vaultStats?.availableLiquidity || '0') / 1e6;
-  const reservePercent = totalAssets > 0 ? (availableLiquidity / totalAssets) * 100 : 0;
+  const availableCapital = parseFloat(treasuryStats?.availableLiquidity || '0') / 1e6;
+  const reservePercent = totalAssets > 0 ? (availableCapital / totalAssets) * 100 : 0;
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-3xl font-display text-gold mb-2">Vault Management</h2>
+        <h2 className="text-3xl font-display text-gold mb-2">Treasury Dashboard</h2>
         <p className="text-muted-foreground">
-          Monitor liquidity pool health and exposure limits
+          Monitor treasury health and exposure limits
         </p>
       </div>
 
@@ -99,15 +99,15 @@ export default function VaultManagementPage() {
             )}
             <div>
               <h3 className="text-xl font-display mb-1">
-                Vault Status:{' '}
+                Treasury Status:{' '}
                 {isHealthy ? 'Healthy' : isWarning ? 'Warning' : 'Critical'}
               </h3>
               <p className="text-sm text-muted-foreground">
                 {isHealthy
-                  ? 'Utilization is within safe limits'
+                  ? 'Capital utilization is within safe limits'
                   : isWarning
-                  ? 'Approaching maximum utilization'
-                  : 'Vault utilization critically high - consider pausing risky assets'}
+                  ? 'Approaching maximum capital utilization'
+                  : 'Capital utilization critically high - consider pausing risky assets'}
               </p>
             </div>
           </div>
@@ -117,35 +117,35 @@ export default function VaultManagementPage() {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
-          title="Total Value Locked"
-          value={`${formatCompactNumber(totalAssets)} mAED`}
+          title="Total Reserves"
+          value={`${formatCompactNumber(totalAssets)} DDSC`}
           icon={DollarSign}
-          loading={vaultLoading}
+          loading={treasuryLoading}
         />
         <MetricCard
           title="Total Exposure"
-          value={`${formatCompactNumber(totalExposure)} mAED`}
+          value={`${formatCompactNumber(totalExposure)} DDSC`}
           icon={TrendingUp}
-          loading={vaultLoading}
+          loading={treasuryLoading}
         />
         <MetricCard
-          title="Available Liquidity"
-          value={`${formatCompactNumber(availableLiquidity)} mAED`}
-          icon={Wallet}
-          loading={vaultLoading}
+          title="Available Capital"
+          value={`${formatCompactNumber(availableCapital)} DDSC`}
+          icon={Landmark}
+          loading={treasuryLoading}
         />
         <MetricCard
           title="Reserve Ratio"
           value={`${reservePercent.toFixed(2)}%`}
           icon={Shield}
-          loading={vaultLoading}
+          loading={treasuryLoading}
         />
       </div>
 
       {/* Utilization Gauge */}
       <Card className="premium-card">
         <CardHeader>
-          <CardTitle className="text-xl font-display">Vault Utilization</CardTitle>
+          <CardTitle className="text-xl font-display">Capital Utilization</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -200,7 +200,7 @@ export default function VaultManagementPage() {
               const exposure = parseFloat(assetExposureEntry?.asset_exposure || asset.exposure || '0') / 1e6;
               const maxExposure = parseFloat(asset.maxExposure || '0') / 1e6;
               const exposurePercent = maxExposure > 0 ? (exposure / maxExposure) * 100 : 0;
-              const vaultPercent = totalAssets > 0 ? (exposure / totalAssets) * 100 : 0;
+              const treasuryPercent = totalAssets > 0 ? (exposure / totalAssets) * 100 : 0;
 
               return (
                 <div key={asset.assetId} className="space-y-2">
@@ -215,7 +215,7 @@ export default function VaultManagementPage() {
                       <div>
                         <h4 className="font-semibold">{asset.name}</h4>
                         <p className="text-xs text-muted-foreground">
-                          {formatCompactNumber(exposure)} / {formatCompactNumber(maxExposure)} mAED
+                          {formatCompactNumber(exposure)} / {formatCompactNumber(maxExposure)} DDSC
                         </p>
                       </div>
                     </div>
@@ -227,7 +227,7 @@ export default function VaultManagementPage() {
                         {exposurePercent.toFixed(1)}%
                       </Badge>
                       <p className="text-xs text-muted-foreground">
-                        {vaultPercent.toFixed(1)}% of vault
+                        {treasuryPercent.toFixed(1)}% of treasury
                       </p>
                     </div>
                   </div>
@@ -242,26 +242,26 @@ export default function VaultManagementPage() {
         </CardContent>
       </Card>
 
-      {/* LP Positions (Top Liquidity Providers) */}
+      {/* Capital Positions */}
       <Card className="premium-card">
         <CardHeader>
-          <CardTitle className="text-xl font-display">LP Positions</CardTitle>
+          <CardTitle className="text-xl font-display">Capital Positions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
-            <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>LP position tracking coming soon</p>
+            <Landmark className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Capital position tracking coming soon</p>
             <p className="text-sm mt-2">
-              Contract events will be indexed to show individual LP stakes and shares
+              Contract events will be indexed to show individual capital deposits and shares
             </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Vault Activity */}
+      {/* Treasury Activity */}
       <Card className="premium-card">
         <CardHeader>
-          <CardTitle className="text-xl font-display">Recent Vault Activity</CardTitle>
+          <CardTitle className="text-xl font-display">Recent Treasury Activity</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -292,7 +292,7 @@ export default function VaultManagementPage() {
                   <div className="text-right">
                     <p className={`font-mono text-sm font-semibold ${color}`}>
                       {isBuy ? '+' : '-'}
-                      {formatCompactNumber(parseFloat(trade.stablecoin_amount) / 1e6)} mAED
+                      {formatCompactNumber(parseFloat(trade.stablecoin_amount) / 1e6)} DDSC
                     </p>
                   </div>
                 </div>

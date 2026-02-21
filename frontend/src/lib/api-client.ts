@@ -38,6 +38,19 @@ async function handleResponse<T>(response: Response): Promise<T> {
  * API Client Methods
  */
 export const apiClient = {
+  // ==================== CONFIG ====================
+
+  /**
+   * Get contract addresses and chain configuration from middleware
+   */
+  async getConfig() {
+    const response = await fetch(`${API_BASE_URL}/config`);
+    return handleResponse<{
+      contracts: Record<string, string | null>;
+      chain: { id: number; name: string; rpcUrl: string; blockExplorer: string | null };
+    }>(response);
+  },
+
   // ==================== ASSETS ====================
 
   /**
@@ -140,13 +153,13 @@ export const apiClient = {
     return handleResponse<{ address: string; trades: any[] }>(response);
   },
 
-  // ==================== VAULT ====================
+  // ==================== TREASURY ====================
 
   /**
-   * Get vault statistics (TVL, utilization, etc.)
+   * Get treasury statistics (total reserves, utilization, etc.)
    */
-  async getVaultStats() {
-    const response = await fetch(`${API_BASE_URL}/vault/stats`);
+  async getTreasuryStats() {
+    const response = await fetch(`${API_BASE_URL}/treasury/stats`);
     return handleResponse<{
       totalAssets: string;
       utilization: number;
@@ -155,22 +168,22 @@ export const apiClient = {
   },
 
   /**
-   * Get vault exposure breakdown by asset
+   * Get treasury exposure breakdown by asset
    */
-  async getVaultExposure() {
-    const response = await fetch(`${API_BASE_URL}/vault/exposure`);
+  async getTreasuryExposure() {
+    const response = await fetch(`${API_BASE_URL}/treasury/exposure`);
     return handleResponse<{ assetExposures: any[]; totalExposure: string }>(response);
   },
 
   /**
    * Get deposit/withdrawal history
    */
-  async getVaultDeposits(params?: { limit?: number; offset?: number }) {
+  async getTreasuryDeposits(params?: { limit?: number; offset?: number }) {
     const query = new URLSearchParams();
     if (params?.limit) query.set('limit', params.limit.toString());
     if (params?.offset) query.set('offset', params.offset.toString());
 
-    const response = await fetch(`${API_BASE_URL}/vault/deposits?${query}`);
+    const response = await fetch(`${API_BASE_URL}/treasury/deposits?${query}`);
     return handleResponse<{ deposits: any[] }>(response);
   },
 

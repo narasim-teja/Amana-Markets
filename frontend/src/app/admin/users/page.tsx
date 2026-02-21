@@ -299,7 +299,7 @@ export default function UsersManagementPage() {
                   <TableHead>Address</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Trade Count</TableHead>
-                  <TableHead className="text-right">Total Volume (mAED)</TableHead>
+                  <TableHead className="text-right">Total Volume (DDSC)</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>

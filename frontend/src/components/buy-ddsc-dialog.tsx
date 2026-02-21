@@ -27,12 +27,12 @@ const PRESET_AMOUNTS = [
   { label: '50,000', value: '50000', description: 'Whale' },
 ];
 
-interface MintMaedDialogProps {
+interface BuyDDSCDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function MintMaedDialog({ open, onOpenChange }: MintMaedDialogProps) {
+export function BuyDDSCDialog({ open, onOpenChange }: BuyDDSCDialogProps) {
   const { user } = usePrivy();
   const { writeContract, isLoading } = useContractWrite();
   const queryClient = useQueryClient();
@@ -56,11 +56,11 @@ export function MintMaedDialog({ open, onOpenChange }: MintMaedDialogProps) {
     }
   };
 
-  const handleMint = async () => {
+  const handleBuy = async () => {
     if (!walletAddress || !activeAmount || parseFloat(activeAmount) <= 0) return;
 
     try {
-      const amountWei = parseUnits(activeAmount, 6); // mAED has 6 decimals
+      const amountWei = parseUnits(activeAmount, 6); // DDSC has 6 decimals
 
       await writeContract({
         address: CONTRACTS.MockDirham.address,
@@ -88,10 +88,10 @@ export function MintMaedDialog({ open, onOpenChange }: MintMaedDialogProps) {
             <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center">
               <Banknote className="h-4.5 w-4.5 text-gold" />
             </div>
-            Buy mAED
+            Buy DDSC
           </DialogTitle>
           <DialogDescription>
-            Purchase mAED (Mock Dirham) stablecoin to trade tokenized
+            Purchase DDSC (Dubai Digital Stablecoin) to trade tokenized
             commodities on the ADI marketplace.
           </DialogDescription>
         </DialogHeader>
@@ -152,7 +152,7 @@ export function MintMaedDialog({ open, onOpenChange }: MintMaedDialogProps) {
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
                 <Coins className="h-3.5 w-3.5 text-gold" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  mAED
+                  DDSC
                 </span>
               </div>
             </div>
@@ -164,13 +164,13 @@ export function MintMaedDialog({ open, onOpenChange }: MintMaedDialogProps) {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Amount</span>
                 <span className="font-mono font-medium text-foreground">
-                  {parseFloat(activeAmount).toLocaleString()} mAED
+                  {parseFloat(activeAmount).toLocaleString()} DDSC
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Rate</span>
                 <span className="font-mono text-muted-foreground">
-                  1 mAED = 1 AED
+                  1 DDSC = 1 AED
                 </span>
               </div>
               <div className="h-px bg-dark-700" />
@@ -182,7 +182,7 @@ export function MintMaedDialog({ open, onOpenChange }: MintMaedDialogProps) {
                   </span>
                 </div>
                 <span className="font-mono text-lg font-bold text-gold">
-                  {parseFloat(activeAmount).toLocaleString()} mAED
+                  {parseFloat(activeAmount).toLocaleString()} DDSC
                 </span>
               </div>
             </div>
@@ -190,7 +190,7 @@ export function MintMaedDialog({ open, onOpenChange }: MintMaedDialogProps) {
 
           {/* Buy Button */}
           <Button
-            onClick={handleMint}
+            onClick={handleBuy}
             disabled={
               !activeAmount || parseFloat(activeAmount) <= 0 || isLoading
             }
@@ -209,7 +209,7 @@ export function MintMaedDialog({ open, onOpenChange }: MintMaedDialogProps) {
                 {activeAmount
                   ? `${parseFloat(activeAmount).toLocaleString()} `
                   : ''}
-                mAED
+                DDSC
               </div>
             )}
           </Button>

@@ -70,11 +70,6 @@ export function MainNav() {
       label: 'Portfolio',
       icon: BarChart3,
     },
-    {
-      href: '/vault',
-      label: 'Vault',
-      icon: Wallet,
-    },
   ];
 
   return (
@@ -158,7 +153,7 @@ export function MainNav() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-[280px]">
-                  <DropdownMenuLabel>Connected Wallet</DropdownMenuLabel>
+                  <DropdownMenuLabel>Connected Account</DropdownMenuLabel>
                   <div className="px-3 py-2">
                     <div className="font-mono text-xs text-muted-foreground break-all leading-relaxed">
                       {walletAddress}
@@ -193,14 +188,14 @@ export function MainNav() {
                     className="text-red-400 focus:text-red-300"
                   >
                     <LogOut className="h-4 w-4" />
-                    Disconnect
+                    Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Button onClick={login} className="btn-gold hidden md:flex">
                 <Wallet className="h-4 w-4 mr-2" />
-                Connect Wallet
+                Connect Account
               </Button>
             )}
 
@@ -307,12 +302,12 @@ export function MainNav() {
                       onClick={logout}
                     >
                       <LogOut className="h-4 w-4 mr-1.5" />
-                      Disconnect
+                      Sign Out
                     </Button>
                   </div>
                 ) : (
                   <Button onClick={login} className="btn-gold w-full">
-                    Connect Wallet
+                    Connect Account
                   </Button>
                 )}
               </div>

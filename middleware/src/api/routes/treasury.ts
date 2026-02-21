@@ -5,7 +5,7 @@ import { CONTRACTS } from '../../config/contracts';
 
 const app = new Hono();
 
-// GET /vault/stats - Current vault statistics
+// GET /treasury/stats - Current treasury statistics
 app.get('/stats', async (c) => {
   const [totalAssets, utilization, availableLiquidity] = await Promise.all([
     publicClient.readContract({
@@ -32,7 +32,7 @@ app.get('/stats', async (c) => {
   });
 });
 
-// GET /vault/exposure - Asset exposure breakdown
+// GET /treasury/exposure - Asset exposure breakdown
 app.get('/exposure', async (c) => {
   const totalExposure = await publicClient.readContract({
     address: CONTRACTS.LiquidityVault.address,
@@ -60,7 +60,7 @@ app.get('/exposure', async (c) => {
   });
 });
 
-// GET /vault/deposits - Deposit history
+// GET /treasury/deposits - Deposit history
 app.get('/deposits', (c) => {
   const lp = c.req.query('lp')?.toLowerCase();
   const limit = parseInt(c.req.query('limit') || '50');

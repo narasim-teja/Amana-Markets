@@ -2,7 +2,7 @@
 
 /**
  * Admin Overview Dashboard
- * Shows key metrics, live trade feed, vault health, oracle status
+ * Shows key metrics, live trade feed, treasury health, price feed status
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -27,10 +27,10 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function AdminOverviewPage() {
-  // Fetch vault stats
-  const { data: vaultStats, isLoading: vaultLoading } = useQuery({
-    queryKey: ['vaultStats'],
-    queryFn: () => apiClient.getVaultStats(),
+  // Fetch treasury stats
+  const { data: treasuryStats, isLoading: treasuryLoading } = useQuery({
+    queryKey: ['treasuryStats'],
+    queryFn: () => apiClient.getTreasuryStats(),
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
@@ -102,14 +102,14 @@ export default function AdminOverviewPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          title="Total Value Locked"
-          value={`${formatCompactNumber(parseFloat(vaultStats?.totalAssets || '0') / 1e6)} mAED`}
+          title="Total Reserves"
+          value={`${formatCompactNumber(parseFloat(treasuryStats?.totalAssets || '0') / 1e6)} DDSC`}
           icon={DollarSign}
-          loading={vaultLoading}
+          loading={treasuryLoading}
         />
         <StatsCard
           title="24h Volume"
-          value={`${formatCompactNumber(totalVolume / 1e6)} mAED`}
+          value={`${formatCompactNumber(totalVolume / 1e6)} DDSC`}
           change="+12.5%"
           changeType="positive"
           icon={TrendingUp}
@@ -117,7 +117,7 @@ export default function AdminOverviewPage() {
         />
         <StatsCard
           title="Total Fees Collected"
-          value={`${formatAED(feesData?.totalFees || '0')} mAED`}
+          value={`${formatAED(feesData?.totalFees || '0')} DDSC`}
           icon={Activity}
           loading={feesLoading}
         />
@@ -129,40 +129,40 @@ export default function AdminOverviewPage() {
         />
       </div>
 
-      {/* Vault Utilization */}
+      {/* Capital Utilization */}
       <Card className="premium-card">
         <CardHeader>
-          <CardTitle className="text-xl font-display">Vault Utilization</CardTitle>
+          <CardTitle className="text-xl font-display">Capital Utilization</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <Progress
-                value={vaultStats?.utilization || 0}
+                value={treasuryStats?.utilization || 0}
                 className="h-4"
               />
             </div>
             <span className="font-mono text-lg font-semibold text-gold min-w-[80px] text-right">
-              {vaultStats?.utilization?.toFixed(2) || '0.00'}%
+              {treasuryStats?.utilization?.toFixed(2) || '0.00'}%
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
             <div>
-              <p className="text-muted-foreground">Total Assets</p>
+              <p className="text-muted-foreground">Total Reserves</p>
               <p className="font-mono font-semibold">
-                {formatCompactNumber(parseFloat(vaultStats?.totalAssets || '0') / 1e6)} mAED
+                {formatCompactNumber(parseFloat(treasuryStats?.totalAssets || '0') / 1e6)} DDSC
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">Utilization</p>
               <p className="font-mono font-semibold">
-                {vaultStats?.utilization?.toFixed(2) || '0.00'}%
+                {treasuryStats?.utilization?.toFixed(2) || '0.00'}%
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">Available</p>
               <p className="font-mono font-semibold">
-                {formatCompactNumber(parseFloat(vaultStats?.availableLiquidity || '0') / 1e6)} mAED
+                {formatCompactNumber(parseFloat(treasuryStats?.availableLiquidity || '0') / 1e6)} DDSC
               </p>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function AdminOverviewPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-mono text-sm font-semibold">
-                        {formatCompactNumber(parseFloat(trade.stablecoin_amount) / 1e6)} mAED
+                        {formatCompactNumber(parseFloat(trade.stablecoin_amount) / 1e6)} DDSC
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatRelativeTime(trade.timestamp)}

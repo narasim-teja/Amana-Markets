@@ -44,6 +44,12 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
     uint256 public spreadScalingFactor = 15000; // 1.5x scaling at 100% utilization
     uint256 public constant MAX_SPREAD_MULTIPLIER = 5;
 
+    // --- Trusted Price Mode (hackathon gas optimization) ---
+    /// @notice When true, buy/sell/quote accept caller-provided USD prices
+    ///         instead of querying OracleRouter on-chain.
+    bool public trustedPriceMode;
+    event TrustedPriceModeUpdated(bool enabled);
+
     // --- Fee & Trade Tracking ---
     uint256 public totalFeesCollected;
     mapping(bytes32 => uint256) public feesPerAsset;
@@ -104,13 +110,25 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
         stablecoin = IERC20(stablecoin_);
     }
 
+    // ========== Internal Helpers ==========
+
+    /// @dev Resolve USD price: from caller (trusted mode) or from OracleRouter
+    function _resolveUsdPrice(bytes32 assetId, uint256 callerPrice) internal view returns (uint256) {
+        if (trustedPriceMode) {
+            require(callerPrice > 0, "Zero price");
+            return callerPrice;
+        }
+        (IOracleAdapter.PriceData memory priceData,) = oracleRouter.getFreshestPrice(assetId);
+        return priceData.price;
+    }
+
     // ========== Core Trading ==========
 
     /// @notice Buy commodity tokens with stablecoin (mAED)
     /// @param assetId The asset to buy (e.g., AssetIds.GOLD)
     /// @param stablecoinAmount Amount of stablecoin to spend (6 decimals)
     /// @return tokensReceived Amount of commodity tokens minted (18 decimals)
-    function buy(bytes32 assetId, uint256 stablecoinAmount)
+    function buy(bytes32 assetId, uint256 stablecoinAmount, uint256 usdPrice)
         external
         whenNotPaused
         nonReentrant
@@ -123,9 +141,9 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
         AssetRegistry.AssetConfig memory asset = registry.getAsset(assetId);
         if (!asset.isActive || asset.addedAt == 0) revert AssetNotActive(assetId);
 
-        // 2. Get oracle price (USD) and convert to local stablecoin price
-        (IOracleAdapter.PriceData memory priceData,) = oracleRouter.getFreshestPrice(assetId);
-        uint256 localPrice = PriceLib.convertUsdPrice(priceData.price, stablecoinPerUsd);
+        // 2. Get price (USD) and convert to local stablecoin price
+        uint256 oraclePriceUsd = _resolveUsdPrice(assetId, usdPrice);
+        uint256 localPrice = PriceLib.convertUsdPrice(oraclePriceUsd, stablecoinPerUsd);
 
         // 3. Apply dynamic spread (buy = price goes UP → user gets fewer tokens)
         uint256 spreadBps = currentSpread(assetId);
@@ -166,7 +184,7 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
             true,
             stablecoinAmount,
             tokensReceived,
-            priceData.price,
+            oraclePriceUsd,
             effectivePrice,
             spreadBps,
             fee,
@@ -174,11 +192,11 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
         );
     }
 
-    /// @notice Sell commodity tokens for stablecoin (mAED)
+    /// @notice Sell commodity tokens for stablecoin
     /// @param assetId The asset to sell
     /// @param tokenAmount Amount of commodity tokens to sell (18 decimals)
     /// @return stablecoinReceived Amount of stablecoin received (6 decimals)
-    function sell(bytes32 assetId, uint256 tokenAmount)
+    function sell(bytes32 assetId, uint256 tokenAmount, uint256 usdPrice)
         external
         whenNotPaused
         nonReentrant
@@ -191,9 +209,9 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
         AssetRegistry.AssetConfig memory asset = registry.getAsset(assetId);
         if (!asset.isActive || asset.addedAt == 0) revert AssetNotActive(assetId);
 
-        // 2. Get oracle price (USD) and convert to local stablecoin price
-        (IOracleAdapter.PriceData memory priceData,) = oracleRouter.getFreshestPrice(assetId);
-        uint256 localPrice = PriceLib.convertUsdPrice(priceData.price, stablecoinPerUsd);
+        // 2. Get price (USD) and convert to local stablecoin price
+        uint256 oraclePriceUsd = _resolveUsdPrice(assetId, usdPrice);
+        uint256 localPrice = PriceLib.convertUsdPrice(oraclePriceUsd, stablecoinPerUsd);
 
         // 3. Apply dynamic spread (sell = price goes DOWN → user gets less stablecoin)
         uint256 spreadBps = currentSpread(assetId);
@@ -240,7 +258,7 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
             false,
             stablecoinReceived,
             tokenAmount,
-            priceData.price,
+            oraclePriceUsd,
             effectivePrice,
             spreadBps,
             fee,
@@ -271,13 +289,13 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
     // ========== Quote Functions ==========
 
     /// @notice Get a buy quote without executing
-    function quoteBuy(bytes32 assetId, uint256 stablecoinAmount)
+    function quoteBuy(bytes32 assetId, uint256 stablecoinAmount, uint256 usdPrice)
         external
         view
         returns (uint256 tokensOut, uint256 effectivePrice, uint256 spreadBps_, uint256 fee)
     {
-        (IOracleAdapter.PriceData memory priceData,) = oracleRouter.getFreshestPrice(assetId);
-        uint256 localPrice = PriceLib.convertUsdPrice(priceData.price, stablecoinPerUsd);
+        uint256 oraclePriceUsd = _resolveUsdPrice(assetId, usdPrice);
+        uint256 localPrice = PriceLib.convertUsdPrice(oraclePriceUsd, stablecoinPerUsd);
 
         spreadBps_ = currentSpread(assetId);
         effectivePrice = PriceLib.applyBuySpread(localPrice, spreadBps_);
@@ -286,13 +304,13 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     /// @notice Get a sell quote without executing
-    function quoteSell(bytes32 assetId, uint256 tokenAmount)
+    function quoteSell(bytes32 assetId, uint256 tokenAmount, uint256 usdPrice)
         external
         view
         returns (uint256 stablecoinOut, uint256 effectivePrice, uint256 spreadBps_, uint256 fee)
     {
-        (IOracleAdapter.PriceData memory priceData,) = oracleRouter.getFreshestPrice(assetId);
-        uint256 localPrice = PriceLib.convertUsdPrice(priceData.price, stablecoinPerUsd);
+        uint256 oraclePriceUsd = _resolveUsdPrice(assetId, usdPrice);
+        uint256 localPrice = PriceLib.convertUsdPrice(oraclePriceUsd, stablecoinPerUsd);
 
         spreadBps_ = currentSpread(assetId);
         effectivePrice = PriceLib.applySellSpread(localPrice, spreadBps_);
@@ -354,5 +372,12 @@ contract TradingEngine is Ownable2Step, Pausable, ReentrancyGuard {
     function setUserRegistry(address registry_) external onlyOwner {
         userRegistry = UserRegistry(registry_);
         emit UserRegistryUpdated(registry_);
+    }
+
+    /// @notice Toggle trusted price mode. When enabled, buy/sell/quote
+    ///         use caller-provided prices instead of on-chain oracle.
+    function setTrustedPriceMode(bool enabled) external onlyOwner {
+        trustedPriceMode = enabled;
+        emit TrustedPriceModeUpdated(enabled);
     }
 }

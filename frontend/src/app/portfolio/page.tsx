@@ -71,11 +71,11 @@ export default function PortfolioPage() {
         <div className="text-center">
           <h2 className="text-3xl font-display text-gold mb-4">View Your Portfolio</h2>
           <p className="text-muted-foreground mb-8">
-            Connect your wallet to see your holdings and trade history
+            Connect your account to see your holdings and trade history
           </p>
           <Button onClick={login} size="lg" className="btn-gold">
             <Wallet className="h-4 w-4 mr-2" />
-            Connect Wallet
+            Connect Account
           </Button>
         </div>
       </div>
@@ -118,7 +118,7 @@ export default function PortfolioPage() {
           </CardHeader>
           <CardContent>
             <div className="number-display">
-              {formatCompactNumber(totalVolume / 1e6)} mAED
+              {formatCompactNumber(totalVolume / 1e6)} DDSC
             </div>
           </CardContent>
         </Card>
@@ -165,7 +165,7 @@ export default function PortfolioPage() {
                   <TableHead>Asset</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Value (mAED)</TableHead>
+                  <TableHead className="text-right">Value (DDSC)</TableHead>
                   <TableHead className="text-right">Time</TableHead>
                 </TableRow>
               </TableHeader>
@@ -235,7 +235,7 @@ function HoldingsTable({ assets }: { assets: AssetMetadata[] }) {
         <TableRow>
           <TableHead>Asset</TableHead>
           <TableHead className="text-right">Holdings</TableHead>
-          <TableHead className="text-right">Cost Basis (mAED)</TableHead>
+          <TableHead className="text-right">Cost Basis (DDSC)</TableHead>
           <TableHead className="text-right">Market Value (USD)</TableHead>
         </TableRow>
       </TableHeader>

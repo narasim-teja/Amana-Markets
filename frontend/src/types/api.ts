@@ -45,12 +45,14 @@ export interface LivePriceData {
   assetId: string;
   symbol: string;
   name: string;
+  category: string;
   displayPrice: string;
   displayPriceRaw: string;
   sources: {
     dia?: SourcePrice;
     pyth?: SourcePrice;
     redstone?: SourcePrice;
+    yahoo?: SourcePrice;
   };
   median: string;
   lastUpdated: number;

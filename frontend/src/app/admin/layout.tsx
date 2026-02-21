@@ -15,8 +15,8 @@ import {
   Users,
   Package,
   TrendingUp,
-  Vault,
-  Radio,
+  Landmark,
+  Activity,
   LogOut,
 } from 'lucide-react';
 
@@ -97,7 +97,7 @@ export default function AdminLayout({
               <button
                 onClick={() => logout()}
                 className="p-2 hover:bg-dark-800 rounded-lg transition-colors"
-                title="Disconnect"
+                title="Sign Out"
               >
                 <LogOut className="h-5 w-5 text-muted-foreground" />
               </button>
@@ -122,11 +122,11 @@ export default function AdminLayout({
             <NavLink href="/admin/analytics" icon={TrendingUp}>
               Analytics
             </NavLink>
-            <NavLink href="/admin/vault" icon={Vault}>
-              Vault Health
+            <NavLink href="/admin/treasury" icon={Landmark}>
+              Treasury
             </NavLink>
-            <NavLink href="/admin/oracle" icon={Radio}>
-              Oracle Status
+            <NavLink href="/admin/oracle" icon={Activity}>
+              Price Feeds
             </NavLink>
 
             <div className="pt-4 mt-4 border-t border-dark-700">

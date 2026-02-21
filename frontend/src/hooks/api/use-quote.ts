@@ -25,7 +25,7 @@ const EMPTY: QuoteResult = {
 /**
  * Get a buy or sell quote from TradingEngine.
  *
- * Buy flow:  user enters mAED amount  → quoteBuy(assetId, stablecoinAmount)
+ * Buy flow:  user enters DDSC amount  → quoteBuy(assetId, stablecoinAmount)
  *            returns (tokensOut, effectivePrice, spreadBps, fee)
  *
  * Sell flow: user enters token amount  → quoteSell(assetId, tokenAmount)
@@ -35,12 +35,13 @@ export function useQuote(
   assetId: string | null,
   isBuy: boolean,
   amount: string,
+  usdPriceRaw: bigint | null,
   debounceMs: number = 500
 ) {
   const [quote, setQuote] = useState<QuoteResult>(EMPTY);
 
   useEffect(() => {
-    if (!assetId || !amount || parseFloat(amount) <= 0) {
+    if (!assetId || !amount || parseFloat(amount) <= 0 || !usdPriceRaw) {
       setQuote(EMPTY);
       return;
     }
@@ -54,7 +55,7 @@ export function useQuote(
           transport: http(),
         });
 
-        // Buy: input is mAED (6 decimals).  Sell: input is commodity tokens (18 decimals).
+        // Buy: input is DDSC (6 decimals).  Sell: input is commodity tokens (18 decimals).
         const decimals = isBuy ? 6 : 18;
         const amountWei = parseUnits(amount, decimals);
 
@@ -64,7 +65,7 @@ export function useQuote(
           address: CONTRACTS.TradingEngine.address,
           abi: CONTRACTS.TradingEngine.abi,
           functionName,
-          args: [assetId, amountWei],
+          args: [assetId, amountWei, usdPriceRaw],
         });
 
         // Both quoteBuy and quoteSell return a tuple:
@@ -90,7 +91,7 @@ export function useQuote(
     }, debounceMs);
 
     return () => clearTimeout(timeoutId);
-  }, [assetId, isBuy, amount, debounceMs]);
+  }, [assetId, isBuy, amount, usdPriceRaw, debounceMs]);
 
   return quote;
 }

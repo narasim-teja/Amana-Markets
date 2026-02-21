@@ -51,10 +51,10 @@ export default function AssetsManagementPage() {
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
-  // Fetch vault stats for exposure data
-  const { data: vaultStats } = useQuery({
-    queryKey: ['vaultStats'],
-    queryFn: () => apiClient.getVaultStats(),
+  // Fetch treasury stats for exposure data
+  const { data: treasuryStats } = useQuery({
+    queryKey: ['treasuryStats'],
+    queryFn: () => apiClient.getTreasuryStats(),
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
@@ -83,18 +83,18 @@ export default function AssetsManagementPage() {
         ))}
       </div>
 
-      {/* Vault Utilization Warning */}
-      {vaultStats && vaultStats.utilization > 80 && (
+      {/* Capital Utilization Warning */}
+      {treasuryStats && treasuryStats.utilization > 80 && (
         <Card className="premium-card border-warning">
           <CardHeader>
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-warning" />
-              <CardTitle className="text-lg">High Vault Utilization</CardTitle>
+              <CardTitle className="text-lg">High Capital Utilization</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Vault utilization is at {vaultStats.utilization.toFixed(2)}%. Consider
+              Capital utilization is at {treasuryStats.utilization.toFixed(2)}%. Consider
               adjusting exposure limits or pausing high-risk assets.
             </p>
           </CardContent>
@@ -168,7 +168,7 @@ function AssetCard({ asset, onUpdate }: AssetCardProps) {
           <div>
             <p className="text-muted-foreground mb-1">Exposure</p>
             <p className="font-mono font-semibold">
-              {asset.exposure ? formatCompactNumber(parseFloat(asset.exposure) / 1e6) : '0'} mAED
+              {asset.exposure ? formatCompactNumber(parseFloat(asset.exposure) / 1e6) : '0'} DDSC
             </p>
           </div>
           <div>
@@ -177,13 +177,13 @@ function AssetCard({ asset, onUpdate }: AssetCardProps) {
               {asset.maxExposure
                 ? formatCompactNumber(parseFloat(asset.maxExposure) / 1e6)
                 : '∞'}{' '}
-              mAED
+              DDSC
             </p>
           </div>
           <div>
             <p className="text-muted-foreground mb-1">24h Volume</p>
             <p className="font-mono font-semibold">
-              {asset.volume24h ? formatCompactNumber(parseFloat(asset.volume24h) / 1e6) : '0'} mAED
+              {asset.volume24h ? formatCompactNumber(parseFloat(asset.volume24h) / 1e6) : '0'} DDSC
             </p>
           </div>
         </div>
@@ -300,7 +300,7 @@ function UpdateLimitsDialog({ asset, onUpdate }: AssetCardProps) {
     }
 
     try {
-      // Convert mAED to wei (6 decimals)
+      // Convert DDSC to wei (6 decimals)
       const maxExposureWei = parseUnits(maxExposure, 6);
 
       await writeContract({
@@ -329,12 +329,12 @@ function UpdateLimitsDialog({ asset, onUpdate }: AssetCardProps) {
         <DialogHeader>
           <DialogTitle>Update Exposure Limits - {asset.name}</DialogTitle>
           <DialogDescription>
-            Set maximum vault exposure for this asset
+            Set maximum treasury exposure for this asset
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div>
-            <Label htmlFor="maxExposure">Max Exposure (mAED)</Label>
+            <Label htmlFor="maxExposure">Max Exposure (DDSC)</Label>
             <Input
               id="maxExposure"
               type="number"
@@ -347,7 +347,7 @@ function UpdateLimitsDialog({ asset, onUpdate }: AssetCardProps) {
             <p className="text-xs text-muted-foreground mt-1">
               Current:{' '}
               {asset.maxExposure
-                ? `${formatCompactNumber(parseFloat(asset.maxExposure) / 1e6)} mAED`
+                ? `${formatCompactNumber(parseFloat(asset.maxExposure) / 1e6)} DDSC`
                 : 'No limit'}
             </p>
           </div>
@@ -419,8 +419,8 @@ function GlobalControlsCard() {
       const utilizationBps = BigInt(Math.floor(parseFloat(maxUtilization) * 100));
 
       await executeUtilization({
-        address: CONTRACTS.LiquidityVault.address,
-        abi: CONTRACTS.LiquidityVault.abi,
+        address: CONTRACTS.Treasury.address,
+        abi: CONTRACTS.Treasury.abi,
         functionName: 'updateMaxUtilization',
         args: [utilizationBps],
       });
@@ -484,10 +484,10 @@ function GlobalControlsCard() {
           </p>
         </div>
 
-        {/* Max Vault Utilization */}
+        {/* Max Capital Utilization */}
         <div>
           <Label htmlFor="maxUtil" className="text-base mb-2 block">
-            Max Vault Utilization (%)
+            Max Capital Utilization (%)
           </Label>
           <div className="flex gap-2">
             <Input
@@ -509,7 +509,7 @@ function GlobalControlsCard() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Maximum percentage of vault assets that can be used as exposure
+            Maximum percentage of treasury capital that can be used as exposure
           </p>
         </div>
       </CardContent>

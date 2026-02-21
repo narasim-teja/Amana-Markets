@@ -44,10 +44,11 @@ import { toast } from 'sonner';
 import { createPublicClient, http, formatUnits, parseUnits, maxUint256 } from 'viem';
 import { adiTestnet } from '@/lib/chain';
 import { cn } from '@/lib/utils';
-import { MintMaedDialog } from '@/components/mint-maed-dialog';
+import { BuyDDSCDialog } from '@/components/buy-ddsc-dialog';
 import { PriceChart } from '@/components/charts/price-chart';
 import { TimeframeSelector } from '@/components/charts/timeframe-selector';
 import { usePriceChart } from '@/hooks/api/use-price-chart';
+import { useLivePrice } from '@/hooks/api/use-prices';
 import { useFxRate } from '@/hooks/blockchain/use-fx-rate';
 
 type TradeMode = 'buy' | 'sell';
@@ -61,6 +62,12 @@ export default function TradePage() {
   const [mode, setMode] = useState<TradeMode>('buy');
   const [amount, setAmount] = useState('');
   const [mintDialogOpen, setMintDialogOpen] = useState(false);
+
+  // Live price from middleware API (USD, 8 decimals) — passed to contract for trades
+  const { price: livePrice } = useLivePrice(selectedAssetId);
+  const usdPriceRaw = livePrice?.displayPriceRaw
+    ? BigInt(livePrice.displayPriceRaw)
+    : null;
 
   // Fetch assets
   const { data: assetsData } = useQuery({
@@ -81,8 +88,8 @@ export default function TradePage() {
     setSelectedAssetId(assets[0].assetId);
   }
 
-  // Get quote
-  const quote = useQuote(selectedAssetId, mode === 'buy', amount);
+  // Get quote (passes live USD price to contract for trusted price mode)
+  const quote = useQuote(selectedAssetId, mode === 'buy', amount, usdPriceRaw);
 
   // Get user position
   const { data: position } = usePosition(
@@ -97,7 +104,7 @@ export default function TradePage() {
   const { writeContract: executeTrade, isLoading: isTrading } =
     useContractWrite();
 
-  // mAED balance
+  // DDSC balance
   const { balance: maedBalance, isLoading: maedLoading } = useMaedBalance();
 
   // Chart data
@@ -129,14 +136,14 @@ export default function TradePage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
         <div className="text-center">
           <h2 className="text-3xl font-display text-gold mb-4">
-            Connect Wallet to Trade
+            Connect Account to Trade
           </h2>
           <p className="text-muted-foreground mb-8">
             Access premium commodity trading on the ADI blockchain
           </p>
           <Button onClick={login} size="lg" className="btn-gold">
             <Wallet className="h-4 w-4 mr-2" />
-            Connect Wallet
+            Connect Account
           </Button>
         </div>
       </div>
@@ -187,12 +194,17 @@ export default function TradePage() {
       return;
     }
 
+    if (!usdPriceRaw || usdPriceRaw === BigInt(0)) {
+      toast.error('Price not available yet. Please wait.');
+      return;
+    }
+
     try {
       if (mode === 'buy') {
-        // Buy: amount is mAED (6 decimals)
+        // Buy: amount is DDSC (6 decimals)
         const amountWei = parseUnits(amount, 6);
 
-        // Check mAED allowance and approve if needed
+        // Check DDSC allowance and approve if needed
         const publicClient = createPublicClient({
           chain: adiTestnet,
           transport: http(),
@@ -206,7 +218,7 @@ export default function TradePage() {
         })) as bigint;
 
         if (allowance < amountWei) {
-          toast.info('Approving mAED spend...');
+          toast.info('Approving DDSC spend...');
           await executeTrade({
             address: CONTRACTS.MockDirham.address,
             abi: CONTRACTS.MockDirham.abi,
@@ -219,7 +231,7 @@ export default function TradePage() {
           address: CONTRACTS.TradingEngine.address,
           abi: CONTRACTS.TradingEngine.abi,
           functionName: 'buy',
-          args: [selectedAssetId, amountWei],
+          args: [selectedAssetId, amountWei, usdPriceRaw],
         });
       } else {
         // Sell: amount is commodity tokens (18 decimals)
@@ -229,7 +241,7 @@ export default function TradePage() {
           address: CONTRACTS.TradingEngine.address,
           abi: CONTRACTS.TradingEngine.abi,
           functionName: 'sell',
-          args: [selectedAssetId, amountWei],
+          args: [selectedAssetId, amountWei, usdPriceRaw],
         });
       }
 
@@ -242,7 +254,7 @@ export default function TradePage() {
   const chartPrice = (latestPoint?.price ?? 0) * fxRate;
   const hasPosition = position && parseFloat(position.commodityBalance) > 0;
 
-  // Convert chart data from USD to AED
+  // Convert chart data from USD to DDSC
   const chartDataAed = chartData.map((d) => ({ ...d, price: d.price * fxRate }));
   const latestPointAed = latestPoint
     ? { ...latestPoint, price: latestPoint.price * fxRate }
@@ -290,10 +302,10 @@ export default function TradePage() {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}{' '}
-                    <span className="text-lg text-muted-foreground">AED</span>
+                    <span className="text-lg text-muted-foreground">DDSC</span>
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    {selectedAsset?.name ?? 'Commodity'} / AED
+                    {selectedAsset?.name ?? 'Commodity'} / DDSC
                   </span>
                   {chartPrice > 0 && (
                     <Badge variant="default" className="text-xs gap-1 ml-2">
@@ -452,7 +464,7 @@ export default function TradePage() {
                           <Coins className="h-3 w-3 text-gold" />
                         </div>
                         <span className="text-xs font-semibold text-foreground">
-                          mAED
+                          DDSC
                         </span>
                       </>
                     ) : (
@@ -536,7 +548,7 @@ export default function TradePage() {
                           <Coins className="h-3 w-3 text-gold" />
                         </div>
                         <span className="text-xs font-semibold text-foreground">
-                          mAED
+                          DDSC
                         </span>
                       </>
                     )}
@@ -555,7 +567,7 @@ export default function TradePage() {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{' '}
-                      mAED
+                      DDSC
                     </span>
                   </div>
                   {quote.spreadBps > BigInt(0) && (
@@ -570,7 +582,7 @@ export default function TradePage() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Fee</span>
                       <span className="font-mono text-xs text-foreground">
-                        {parseFloat(formatUnits(quote.fee, 6)).toFixed(2)} mAED
+                        {parseFloat(formatUnits(quote.fee, 6)).toFixed(2)} DDSC
                       </span>
                     </div>
                   )}
@@ -624,12 +636,12 @@ export default function TradePage() {
                 onClick={() => setMintDialogOpen(true)}
                 className="text-xs font-medium text-gold hover:text-gold-light transition-colors flex items-center gap-1 cursor-pointer"
               >
-                + Buy mAED
+                + Buy DDSC
               </button>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">mAED</span>
+                <span className="text-sm text-muted-foreground">DDSC</span>
                 <span className="font-mono text-base font-semibold text-foreground">
                   {maedLoading ? '...' : maedBalance}
                 </span>
@@ -675,7 +687,7 @@ export default function TradePage() {
                       Cost Basis
                     </div>
                     <div className="font-mono text-sm font-semibold">
-                      {formatAED(position.costBasis)} mAED
+                      {formatAED(position.costBasis)} DDSC
                     </div>
                   </div>
                   <div>
@@ -688,7 +700,7 @@ export default function TradePage() {
                             parseFloat(
                               formatUnits(BigInt(position.commodityBalance), 18)
                             ) * chartPrice
-                          ).toFixed(2)} AED`
+                          ).toFixed(2)} DDSC`
                         : '--'}
                     </div>
                   </div>
@@ -704,7 +716,7 @@ export default function TradePage() {
         </div>
       </div>
 
-      <MintMaedDialog
+      <BuyDDSCDialog
         open={mintDialogOpen}
         onOpenChange={setMintDialogOpen}
       />

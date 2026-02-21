@@ -6,7 +6,7 @@
 // ==================== TOKEN DECIMALS ====================
 
 /**
- * MockDirham (mAED) decimals
+ * DDSC (Dubai Digital Stablecoin) decimals
  */
 export const MAED_DECIMALS = 6;
 
@@ -112,24 +112,24 @@ export const DEFAULT_SLIPPAGE_BPS = 50; // 0.5%
  */
 export const QUOTE_DEBOUNCE_DELAY = 500;
 
-// ==================== VAULT SETTINGS ====================
+// ==================== TREASURY SETTINGS ====================
 
 /**
- * Minimum LP deposit amount (mAED, 6 decimals)
+ * Minimum capital deposit amount (DDSC, 6 decimals)
  */
-export const MIN_LP_DEPOSIT = 1000; // 1,000 mAED
+export const MIN_CAPITAL_DEPOSIT = 1000; // 1,000 DDSC
 
 /**
- * Maximum vault utilization warning threshold (bps)
+ * Maximum treasury utilization warning threshold (bps)
  */
-export const VAULT_UTILIZATION_WARNING_BPS = 7500; // 75%
+export const TREASURY_UTILIZATION_WARNING_BPS = 7500; // 75%
 
 // ==================== TESTNET FAUCET ====================
 
 /**
- * Faucet amount for testnet (mAED, 6 decimals)
+ * Faucet amount for testnet (DDSC, 6 decimals)
  */
-export const FAUCET_AMOUNT = 100000; // 100,000 mAED
+export const FAUCET_AMOUNT = 100000; // 100,000 DDSC
 
 /**
  * Faucet cooldown period (seconds)

@@ -1,6 +1,6 @@
 import { ORACLE_APIS } from '../../config/oracles';
 import { ASSETS } from '../../config/assets';
-import { PriceData } from '../../lib/types';
+import type { PriceData } from '../../lib/types';
 import { parsePrice } from '../../lib/utils';
 
 interface RedStoneResponse {
@@ -11,15 +11,18 @@ interface RedStoneResponse {
 }
 
 export async function fetchRedStonePrices(): Promise<PriceData[]> {
-  const symbols = ASSETS.map(a => a.redstoneSymbol).join(',');
+  const redstoneAssets = ASSETS.filter(a => a.redstoneSymbol);
+  if (redstoneAssets.length === 0) return [];
+
+  const symbols = redstoneAssets.map(a => a.redstoneSymbol!).join(',');
   const url = `${ORACLE_APIS.REDSTONE}?symbols=${symbols}&provider=redstone`;
 
   try {
     const response = await fetch(url);
-    const data: RedStoneResponse = await response.json();
+    const data = await response.json() as RedStoneResponse;
 
-    return ASSETS.map(asset => {
-      const priceData = data[asset.redstoneSymbol];
+    return redstoneAssets.map(asset => {
+      const priceData = data[asset.redstoneSymbol!];
       if (!priceData) return null;
 
       return {

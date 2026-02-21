@@ -15,5 +15,5 @@ remappings = [
 adi_testnet = "https://rpc.ab.testnet.adifoundation.ai/"
 adi_mainnet = "https://rpc.adifoundation.ai/"
 
-[etherscan]
-adi_testnet = { key = "", url = "https://explorer.ab.testnet.adifoundation.ai/api" }
+# [etherscan]
+# adi_testnet = { key = "", url = "https://explorer.ab.testnet.adifoundation.ai/api" }

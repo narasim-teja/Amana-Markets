@@ -76,6 +76,11 @@
         "name": "stablecoinAmount",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "usdPrice",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -265,6 +270,11 @@
         "name": "stablecoinAmount",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "usdPrice",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -302,6 +312,11 @@
       },
       {
         "name": "tokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "usdPrice",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -363,6 +378,11 @@
         "name": "tokenAmount",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "usdPrice",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -395,6 +415,19 @@
         "name": "factor",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setTrustedPriceMode",
+    "inputs": [
+      {
+        "name": "enabled",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -490,6 +523,19 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "trustedPriceMode",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -670,6 +716,19 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TrustedPriceModeUpdated",
+    "inputs": [
+      {
+        "name": "enabled",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false

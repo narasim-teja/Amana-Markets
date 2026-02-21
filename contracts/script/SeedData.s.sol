@@ -34,7 +34,7 @@ contract SeedData is Script {
         // --- Execute test buy (3672.5 mAED ≈ $1000 of gold) ---
         uint256 buyAmount = 3672_500000;
         mockDirham.approve(address(engine), buyAmount);
-        uint256 tokensReceived = engine.buy(AssetIds.GOLD, buyAmount);
+        uint256 tokensReceived = engine.buy(AssetIds.GOLD, buyAmount, 0);
         console.log("Bought xGOLD, tokens received:", tokensReceived);
 
         vm.stopBroadcast();

@@ -37,14 +37,14 @@ contract WhitelistedTradingTest is CoreTestSetup {
 
     function test_buy_succeeds_when_whitelisted() public {
         vm.prank(trader1);
-        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000); // ~$1000 worth
+        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000, 0); // ~$1000 worth
         assertGt(tokens, 0);
     }
 
     function test_buy_reverts_when_not_whitelisted() public {
         vm.prank(blockedUser);
         vm.expectRevert(abi.encodeWithSelector(TradingEngine.UserNotWhitelisted.selector, blockedUser));
-        tradingEngine.buy(AssetIds.GOLD, 3672_500000);
+        tradingEngine.buy(AssetIds.GOLD, 3672_500000, 0);
     }
 
     function test_buy_reverts_when_blacklisted() public {
@@ -53,24 +53,24 @@ contract WhitelistedTradingTest is CoreTestSetup {
 
         vm.prank(trader1);
         vm.expectRevert(abi.encodeWithSelector(TradingEngine.UserNotWhitelisted.selector, trader1));
-        tradingEngine.buy(AssetIds.GOLD, 3672_500000);
+        tradingEngine.buy(AssetIds.GOLD, 3672_500000, 0);
     }
 
     function test_sell_succeeds_when_whitelisted() public {
         // First buy some tokens
         vm.prank(trader1);
-        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000);
+        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000, 0);
 
         // Then sell
         vm.prank(trader1);
-        uint256 received = tradingEngine.sell(AssetIds.GOLD, tokens);
+        uint256 received = tradingEngine.sell(AssetIds.GOLD, tokens, 0);
         assertGt(received, 0);
     }
 
     function test_sell_reverts_when_not_whitelisted() public {
         // Buy while whitelisted
         vm.prank(trader1);
-        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000);
+        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000, 0);
 
         // Remove from whitelist
         vm.prank(admin);
@@ -79,7 +79,7 @@ contract WhitelistedTradingTest is CoreTestSetup {
         // Try to sell — should revert
         vm.prank(trader1);
         vm.expectRevert(abi.encodeWithSelector(TradingEngine.UserNotWhitelisted.selector, trader1));
-        tradingEngine.sell(AssetIds.GOLD, tokens);
+        tradingEngine.sell(AssetIds.GOLD, tokens, 0);
     }
 
     // --- LiquidityVault whitelist tests ---
@@ -128,7 +128,7 @@ contract WhitelistedTradingTest is CoreTestSetup {
 
         // Anyone should be able to trade now (no whitelist enforcement)
         vm.prank(blockedUser);
-        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000);
+        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000, 0);
         assertGt(tokens, 0);
     }
 
@@ -146,7 +146,7 @@ contract WhitelistedTradingTest is CoreTestSetup {
 
         // Non-whitelisted user can now trade
         vm.prank(blockedUser);
-        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000);
+        uint256 tokens = tradingEngine.buy(AssetIds.GOLD, 3672_500000, 0);
         assertGt(tokens, 0);
     }
 }
