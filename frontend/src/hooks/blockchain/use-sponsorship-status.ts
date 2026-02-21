@@ -3,13 +3,14 @@
 /**
  * Sponsorship Status Hook
  * Fetches the user's gas sponsorship eligibility and rate limit info.
+ * Uses the smart account address (not EOA) since that's what the middleware checks.
  * Returns null when paymaster is disabled.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useWallets } from '@privy-io/react-auth';
 import { REFETCH_INTERVAL_MEDIUM, STALE_TIME_DEFAULT } from '@/lib/constants';
 import { apiClient } from '@/lib/api-client';
+import { useSmartAccount } from './use-smart-account';
 
 export interface SponsorshipStatus {
   eligible: boolean;
@@ -21,16 +22,15 @@ export interface SponsorshipStatus {
 }
 
 export function useSponsorshipStatus() {
-  const { wallets } = useWallets();
-  const address = wallets[0]?.address;
+  const { smartAccount } = useSmartAccount();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['sponsorship-status', address],
+    queryKey: ['sponsorship-status', smartAccount],
     queryFn: async () => {
-      if (!address) return null;
-      return apiClient.getSponsorshipStatus(address);
+      if (!smartAccount) return null;
+      return apiClient.getSponsorshipStatus(smartAccount);
     },
-    enabled: !!address,
+    enabled: !!smartAccount,
     refetchInterval: REFETCH_INTERVAL_MEDIUM,
     staleTime: STALE_TIME_DEFAULT,
   });

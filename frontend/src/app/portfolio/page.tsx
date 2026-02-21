@@ -7,7 +7,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
+import { useSmartAccount } from '@/hooks/blockchain/use-smart-account';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,8 +44,7 @@ import {
 
 export default function PortfolioPage() {
   const { authenticated, login } = usePrivy();
-  const { wallets } = useWallets();
-  const walletAddress = wallets[0]?.address;
+  const { displayAddress: walletAddress } = useSmartAccount();
 
   // Fetch assets
   const { data: assetsData } = useQuery({

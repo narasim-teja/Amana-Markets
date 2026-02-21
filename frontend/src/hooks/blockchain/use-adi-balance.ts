@@ -1,9 +1,9 @@
 'use client';
 
-import { usePrivy } from '@privy-io/react-auth';
 import { useQuery } from '@tanstack/react-query';
 import { createPublicClient, http, formatEther } from 'viem';
 import { adiTestnet } from '@/lib/chain';
+import { useSmartAccount } from './use-smart-account';
 
 const publicClient = createPublicClient({
   chain: adiTestnet,
@@ -11,17 +11,16 @@ const publicClient = createPublicClient({
 });
 
 export function useAdiBalance() {
-  const { user, authenticated } = usePrivy();
-  const walletAddress = user?.wallet?.address as `0x${string}` | undefined;
+  const { displayAddress } = useSmartAccount();
 
   const { data: balance, isLoading } = useQuery({
-    queryKey: ['adi-balance', walletAddress],
+    queryKey: ['adi-balance', displayAddress],
     queryFn: async () => {
-      if (!walletAddress) return '0';
-      const raw = await publicClient.getBalance({ address: walletAddress });
+      if (!displayAddress) return '0';
+      const raw = await publicClient.getBalance({ address: displayAddress });
       return formatEther(raw);
     },
-    enabled: authenticated && !!walletAddress,
+    enabled: !!displayAddress,
     refetchInterval: 15_000,
   });
 

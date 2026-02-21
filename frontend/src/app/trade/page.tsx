@@ -8,6 +8,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useSmartAccount } from '@/hooks/blockchain/use-smart-account';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,12 +77,13 @@ export default function TradePage() {
   const { ready, authenticated, login } = usePrivy();
   const { wallets } = useWallets();
   const wallet = wallets[0];
+  const { displayAddress: smartAccountAddress } = useSmartAccount();
 
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [mode, setMode] = useState<TradeMode>('buy');
   const [amount, setAmount] = useState('');
   const [mintDialogOpen, setMintDialogOpen] = useState(false);
-  const [gasMode, setGasMode] = useState<GasMode>('standard');
+  const [gasMode, setGasMode] = useState<GasMode>('sponsored');
 
   // Market selector dropdown
   const [marketOpen, setMarketOpen] = useState(false);
@@ -256,7 +258,7 @@ export default function TradePage() {
                 </p>
                 <div className="p-3 bg-dark-800/50 rounded-lg">
                   <p className="text-sm font-mono text-gold break-all">
-                    {wallet?.address}
+                    {smartAccountAddress ?? wallet?.address}
                   </p>
                 </div>
               </>
@@ -288,7 +290,16 @@ export default function TradePage() {
         // Buy: amount is DDSC (6 decimals)
         const amountWei = parseUnits(amount, 6);
 
-        // Check DDSC allowance and approve if needed
+        // Check DDSC allowance — must match execution context
+        const allowanceAddress = gasMode === 'standard'
+          ? wallet.address as `0x${string}`
+          : smartAccountAddress as `0x${string}`;
+
+        if (!allowanceAddress) {
+          toast.error('Smart account loading, please wait.');
+          return;
+        }
+
         const publicClient = createPublicClient({
           chain: adiTestnet,
           transport: http(),
@@ -298,7 +309,7 @@ export default function TradePage() {
           address: CONTRACTS.MockDirham.address,
           abi: CONTRACTS.MockDirham.abi,
           functionName: 'allowance',
-          args: [wallet.address as `0x${string}`, CONTRACTS.TradingEngine.address],
+          args: [allowanceAddress, CONTRACTS.TradingEngine.address],
         })) as bigint;
 
         if (allowance < amountWei) {

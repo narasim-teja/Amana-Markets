@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useContractWrite } from '@/hooks/blockchain/use-contract-write';
+import { useSponsoredWrite } from '@/hooks/blockchain/use-sponsored-write';
+import { useSmartAccount } from '@/hooks/blockchain/use-smart-account';
 import { CONTRACTS } from '@/lib/contracts';
 import { parseUnits } from 'viem';
 import { Coins, ArrowRightLeft, Sparkles, Banknote } from 'lucide-react';
@@ -33,14 +33,12 @@ interface BuyDDSCDialogProps {
 }
 
 export function BuyDDSCDialog({ open, onOpenChange }: BuyDDSCDialogProps) {
-  const { user } = usePrivy();
-  const { writeContract, isLoading } = useContractWrite();
+  const { writeContract, isLoading } = useSponsoredWrite('native');
+  const { displayAddress } = useSmartAccount();
   const queryClient = useQueryClient();
 
   const [selectedPreset, setSelectedPreset] = useState<string | null>('1000');
   const [customAmount, setCustomAmount] = useState('');
-
-  const walletAddress = user?.wallet?.address as `0x${string}` | undefined;
 
   const activeAmount = customAmount || selectedPreset || '';
 
@@ -57,7 +55,7 @@ export function BuyDDSCDialog({ open, onOpenChange }: BuyDDSCDialogProps) {
   };
 
   const handleBuy = async () => {
-    if (!walletAddress || !activeAmount || parseFloat(activeAmount) <= 0) return;
+    if (!displayAddress || !activeAmount || parseFloat(activeAmount) <= 0) return;
 
     try {
       const amountWei = parseUnits(activeAmount, 6); // DDSC has 6 decimals
@@ -66,7 +64,7 @@ export function BuyDDSCDialog({ open, onOpenChange }: BuyDDSCDialogProps) {
         address: CONTRACTS.MockDirham.address,
         abi: CONTRACTS.MockDirham.abi,
         functionName: 'mint',
-        args: [walletAddress, amountWei],
+        args: [displayAddress, amountWei],
       });
 
       // Refetch balances
@@ -215,7 +213,7 @@ export function BuyDDSCDialog({ open, onOpenChange }: BuyDDSCDialogProps) {
           </Button>
 
           <p className="text-xs text-center text-muted-foreground/60">
-            Instant settlement on ADI Testnet
+            Gas sponsored on ADI Testnet
           </p>
         </div>
       </DialogContent>

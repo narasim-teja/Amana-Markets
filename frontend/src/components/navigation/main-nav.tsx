@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useIsAdmin } from '@/hooks/blockchain/use-admin';
 import { useAdiBalance } from '@/hooks/blockchain/use-adi-balance';
+import { useSmartAccount } from '@/hooks/blockchain/use-smart-account';
 import {
   TrendingUp,
   BarChart3,
@@ -35,10 +36,11 @@ export function MainNav() {
   const { authenticated, login, logout, user } = usePrivy();
   const { isAdmin } = useIsAdmin();
   const { balance, isLoading: balanceLoading } = useAdiBalance();
+  const { displayAddress } = useSmartAccount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const walletAddress = user?.wallet?.address ?? '';
+  const walletAddress = displayAddress ?? '';
   const truncatedAddress = walletAddress
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
     : '';

@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
 import { createPublicClient, http } from 'viem';
 import { CONTRACTS } from '@/lib/contracts';
 import { adiTestnet } from '@/lib/chain';
 import { REFETCH_INTERVAL_SLOW } from '@/lib/constants';
+import { useSmartAccount } from './use-smart-account';
 
 export function useUserStatus() {
   const { authenticated } = usePrivy();
-  const { wallets } = useWallets();
-  const walletAddress = wallets[0]?.address;
+  const { displayAddress: walletAddress } = useSmartAccount();
 
   return useQuery({
     queryKey: ['userStatus', walletAddress],

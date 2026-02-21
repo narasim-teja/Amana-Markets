@@ -51,7 +51,7 @@ const SHIFT_128 = BigInt(128);
 const GAS = {
   verificationGasLimit: BigInt(200000),
   verificationGasLimitDeploy: BigInt(400000),
-  callGasLimit: BigInt(200000),
+  callGasLimit: BigInt(500000),
   preVerificationGas: BigInt(60000),
   maxFeePerGas: BigInt('600000000000'),         // 600 gwei
   maxPriorityFeePerGas: BigInt('100000000000'), // 100 gwei
