@@ -26,6 +26,24 @@ app.route('/health', health);
 app.route('/config', config);
 app.route('/sponsor', sponsor);
 
+// Bundler proxy — avoids CORS issues when frontend calls the bundler directly
+app.post('/bundler', async (c) => {
+  const bundlerUrl = process.env.BUNDLER_URL || 'http://localhost:4337';
+  try {
+    const body = await c.req.text();
+    const res = await fetch(bundlerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+    const data = await res.json();
+    return c.json(data);
+  } catch (error: any) {
+    console.error('[Bundler Proxy] Error:', error.message);
+    return c.json({ jsonrpc: '2.0', id: 1, error: { code: -32000, message: 'Bundler unreachable: ' + error.message } }, 502);
+  }
+});
+
 // Root
 app.get('/', (c) => c.json({
   name: 'ADI Marketplace API',

@@ -50,20 +50,24 @@ export async function checkEligibility(account: Address): Promise<{ eligible: bo
   // Check UserRegistry whitelist if available
   if (CONTRACTS.UserRegistry) {
     try {
+      console.log(`[Sponsor] Checking whitelist for ${account} on UserRegistry ${CONTRACTS.UserRegistry.address}`);
       const isWhitelisted = await publicClient.readContract({
         address: CONTRACTS.UserRegistry.address,
         abi: CONTRACTS.UserRegistry.abi,
         functionName: 'isWhitelisted',
         args: [account]
       }) as boolean;
+      console.log(`[Sponsor] isWhitelisted(${account}) = ${isWhitelisted}`);
 
       if (!isWhitelisted) {
         return { eligible: false, reason: 'Account not whitelisted' };
       }
-    } catch (e) {
+    } catch (e: any) {
       // If UserRegistry check fails, allow by default (testnet permissive)
-      console.warn('UserRegistry check failed, allowing by default:', e);
+      console.warn('[Sponsor] UserRegistry check failed, allowing by default:', e.message);
     }
+  } else {
+    console.log('[Sponsor] No UserRegistry configured, skipping whitelist check');
   }
 
   return { eligible: true };
@@ -117,6 +121,7 @@ export interface SponsorshipResult {
   validAfter: number;
   mode: SponsorshipMode;
   paymaster: Address;
+  entryPoint: Address;
   sponsorNonce: number;
 }
 
@@ -204,6 +209,7 @@ export async function generateSponsorshipData(
     validAfter,
     mode,
     paymaster,
+    entryPoint: ENTRYPOINT,
     sponsorNonce
   };
 }

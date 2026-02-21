@@ -1,38 +1,23 @@
-version: "3.8"
-
 # Alto Bundler for ERC-4337 on ADI Testnet
 # Usage: docker compose up -d
-# Verify: curl -s http://localhost:4337 -d '{"jsonrpc":"2.0","method":"eth_supportedEntryPoints","params":[],"id":1}'
+# Verify: curl -s http://localhost:4337 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_supportedEntryPoints","params":[],"id":1}'
 
 services:
   alto-bundler:
-    image: ghcr.io/pimlicolabs/alto:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: adi-alto-bundler
     restart: unless-stopped
     ports:
       - "${BUNDLER_PORT:-4337}:4337"
     environment:
-      # ADI Testnet configuration
-      - CHAIN_ID=99999
+      - BUNDLER_PRIVATE_KEY=${BUNDLER_PRIVATE_KEY:?Set BUNDLER_PRIVATE_KEY in .env}
       - RPC_URL=${RPC_URL:-https://rpc.ab.testnet.adifoundation.ai/}
-
-      # EntryPoint v0.7 (deterministic deployment address)
       - ENTRYPOINT_ADDRESS=${ENTRYPOINT_ADDRESS:-0x0000000071727De22E5E9d8BAf0edAc6f37da032}
-
-      # Bundler signer key (used to submit bundles on-chain)
-      # IMPORTANT: Fund this address with native ADI tokens for gas
-      - PRIVATE_KEY=${BUNDLER_PRIVATE_KEY:?Set BUNDLER_PRIVATE_KEY in .env}
-
-      # Performance tuning
-      - BUNDLE_INTERVAL=${BUNDLE_INTERVAL:-5}
-      - MAX_BUNDLE_SIZE=${MAX_BUNDLE_SIZE:-10}
-      - MIN_BALANCE=${MIN_BALANCE:-0.1}
-
-      # Logging
-      - LOG_LEVEL=${LOG_LEVEL:-info}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:4337"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
