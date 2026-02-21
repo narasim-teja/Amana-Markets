@@ -139,12 +139,12 @@ export default function AdminOverviewPage() {
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <Progress
-                value={treasuryStats?.utilization || 0}
+                value={(treasuryStats?.utilization || 0) / 100}
                 className="h-4"
               />
             </div>
             <span className="font-mono text-lg font-semibold text-gold min-w-[80px] text-right">
-              {treasuryStats?.utilization?.toFixed(2) || '0.00'}%
+              {((treasuryStats?.utilization || 0) / 100).toFixed(2)}%
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
@@ -157,7 +157,7 @@ export default function AdminOverviewPage() {
             <div>
               <p className="text-muted-foreground">Utilization</p>
               <p className="font-mono font-semibold">
-                {treasuryStats?.utilization?.toFixed(2) || '0.00'}%
+                {((treasuryStats?.utilization || 0) / 100).toFixed(2)}%
               </p>
             </div>
             <div>

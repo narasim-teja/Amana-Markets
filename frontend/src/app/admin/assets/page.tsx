@@ -56,12 +56,25 @@ export default function AssetsManagementPage() {
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
+  // Fetch 24h volume per asset from analytics endpoint
+  const { data: volumeData } = useQuery({
+    queryKey: ['volume', '24h'],
+    queryFn: () => apiClient.getVolumeAnalytics('24h'),
+    refetchInterval: REFETCH_INTERVAL_SLOW,
+  });
+
   const assets: AssetMetadata[] = assetsData || [];
 
   // Build a lookup map for exposure by asset_id
   const exposureMap = new Map<string, string>();
   exposureData?.assetExposures?.forEach((e: { asset_id: string; asset_exposure: string }) => {
     exposureMap.set(e.asset_id, e.asset_exposure);
+  });
+
+  // Build a lookup map for 24h volume by asset_id
+  const volumeMap = new Map<string, string>();
+  volumeData?.volumeByAsset?.forEach((v: { asset_id: string; total_volume?: string }) => {
+    if (v.total_volume) volumeMap.set(v.asset_id, v.total_volume);
   });
 
   return (
@@ -83,6 +96,7 @@ export default function AssetsManagementPage() {
             key={asset.assetId}
             asset={asset}
             openInterest={exposureMap.get(asset.assetId) || '0'}
+            volume24h={volumeMap.get(asset.assetId) || '0'}
             onUpdate={refetchAssets}
           />
         ))}
@@ -96,7 +110,7 @@ interface AssetCardProps {
   onUpdate: () => void;
 }
 
-function AssetCard({ asset, openInterest, onUpdate }: AssetCardProps & { openInterest: string }) {
+function AssetCard({ asset, openInterest, volume24h, onUpdate }: AssetCardProps & { openInterest: string; volume24h: string }) {
   const { writeContract: executePause, isLoading: isPausing } = useContractWrite();
 
   const isPaused = asset.status === 'paused';
@@ -162,7 +176,7 @@ function AssetCard({ asset, openInterest, onUpdate }: AssetCardProps & { openInt
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-muted-foreground">24h Volume</span>
             <span className="font-mono font-semibold text-sm">
-              {asset.volume24h ? formatCompactNumber(parseFloat(asset.volume24h) / 1e6) : '0'} DDSC
+              {formatCompactNumber(parseFloat(volume24h) / 1e6)} DDSC
             </span>
           </div>
         </div>

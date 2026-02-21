@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Palette, Type, Image, Pencil, Eye, RotateCcw } from 'lucide-react';
+import { Palette, Type, Image, Pencil, Eye, RotateCcw, Upload, X } from 'lucide-react';
 
 const FONT_OPTIONS = [
   { value: 'dm-sans', label: 'DM Sans', description: 'Clean, modern (default)' },
@@ -185,18 +185,7 @@ export default function BrandingPage() {
               <Image className="h-4 w-4 text-gold" />
               <h3 className="font-semibold">Logo</h3>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="logoUrl">Logo URL</Label>
-              <Input
-                id="logoUrl"
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://example.com/logo.png or /logo.png"
-              />
-              <p className="text-xs text-muted-foreground">
-                Use a URL to an image or a path relative to /public
-              </p>
-            </div>
+            <LogoUpload logoUrl={logoUrl} onLogoChange={setLogoUrl} />
           </CardContent>
         </Card>
 
@@ -290,6 +279,132 @@ export default function BrandingPage() {
           {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function LogoUpload({
+  logoUrl,
+  onLogoChange,
+}: {
+  logoUrl: string;
+  onLogoChange: (url: string) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const handleFile = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please upload an image file');
+        return;
+      }
+      if (file.size > 500_000) {
+        toast.error('Image must be under 500 KB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        onLogoChange(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    },
+    [onLogoChange]
+  );
+
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragging(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file) handleFile(file);
+    },
+    [handleFile]
+  );
+
+  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    e.target.value = '';
+  };
+
+  const hasPreview = logoUrl && logoUrl !== '/logo.png';
+
+  return (
+    <div className="space-y-3">
+      {/* Drop zone */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className={`relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors ${
+          dragging
+            ? 'border-gold bg-gold/5'
+            : 'border-dark-700 hover:border-dark-500'
+        }`}
+      >
+        {hasPreview ? (
+          <div className="flex items-center gap-4">
+            <img
+              src={logoUrl}
+              alt="Logo preview"
+              className="w-14 h-14 rounded-lg object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            <div className="text-sm text-muted-foreground">
+              <p className="text-foreground font-medium">Logo uploaded</p>
+              <p>Drop a new file or click to replace</p>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLogoChange('/logo.png');
+              }}
+              className="absolute top-2 right-2 p-1 rounded-md hover:bg-dark-700 transition-colors"
+              title="Remove"
+            >
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <Upload className="h-8 w-8 text-muted-foreground" />
+            <div className="text-center text-sm">
+              <p className="text-foreground font-medium">
+                Drop an image here, or click to upload
+              </p>
+              <p className="text-muted-foreground">PNG, SVG, JPG up to 500 KB</p>
+            </div>
+          </>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={onFileSelect}
+          className="hidden"
+        />
+      </div>
+
+      {/* Manual URL fallback */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex-1 h-px bg-dark-700" />
+        <span>or enter a URL</span>
+        <div className="flex-1 h-px bg-dark-700" />
+      </div>
+      <Input
+        value={logoUrl.startsWith('data:') ? '' : logoUrl}
+        onChange={(e) => onLogoChange(e.target.value)}
+        placeholder="/logo.png or https://..."
+        className="text-sm"
+      />
     </div>
   );
 }

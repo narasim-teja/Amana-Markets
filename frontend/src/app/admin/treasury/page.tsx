@@ -59,7 +59,8 @@ export default function TreasuryDashboardPage() {
     refetchInterval: REFETCH_INTERVAL_FAST,
   });
 
-  const utilization = treasuryStats?.utilization || 0;
+  // Contract returns utilization in BPS (0-10000), convert to percentage (0-100)
+  const utilization = (treasuryStats?.utilization || 0) / 100;
   const isHealthy = utilization < 80;
   const isWarning = utilization >= 80 && utilization < 90;
   const isDanger = utilization >= 90;
