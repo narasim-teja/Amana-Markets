@@ -246,6 +246,62 @@ export const apiClient = {
     }>(response);
   },
 
+  // ==================== SPONSORSHIP ====================
+
+  /**
+   * Request gas sponsorship (native or erc20 mode)
+   */
+  async requestSponsorship(sender: string, mode: 'native' | 'erc20' = 'native', userOpHash?: string) {
+    const response = await fetch(`${API_BASE_URL}/sponsor/${mode}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sender, userOpHash }),
+    });
+    return handleResponse<{
+      paymasterAndData: string;
+      validUntil: number;
+      validAfter: number;
+      mode: string;
+      paymaster: string;
+      sponsorNonce: number;
+      bundlerUrl?: string;
+      entryPoint?: string;
+    }>(response);
+  },
+
+  /**
+   * Check sponsorship eligibility and rate limits for an account
+   */
+  async getSponsorshipStatus(address: string) {
+    const response = await fetch(`${API_BASE_URL}/sponsor/status/${address}`);
+    return handleResponse<{
+      eligible: boolean;
+      whitelisted: boolean;
+      sponsoredThisHour: number;
+      hourlyLimit: number;
+      totalSponsored: number;
+      paymasterEnabled: boolean;
+    }>(response);
+  },
+
+  /**
+   * Get paymaster configuration
+   */
+  async getSponsorshipConfig() {
+    const response = await fetch(`${API_BASE_URL}/sponsor/config`);
+    return handleResponse<{
+      enabled: boolean;
+      nativePaymaster: string | null;
+      erc20Paymaster: string | null;
+      entryPoint: string | null;
+      bundlerUrl: string;
+      chainId: number;
+      supportedModes: string[];
+      validitySeconds: number;
+      hourlyLimit: number;
+    }>(response);
+  },
+
   // ==================== HEALTH ====================
 
   /**

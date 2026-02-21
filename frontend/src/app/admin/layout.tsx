@@ -18,6 +18,7 @@ import {
   Landmark,
   Activity,
   LogOut,
+  Fuel,
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -127,6 +128,9 @@ export default function AdminLayout({
             </NavLink>
             <NavLink href="/admin/oracle" icon={Activity}>
               Price Feeds
+            </NavLink>
+            <NavLink href="/admin/sponsorship" icon={Fuel}>
+              Gas Sponsorship
             </NavLink>
 
             <div className="pt-4 mt-4 border-t border-dark-700">

@@ -8,6 +8,7 @@ import users from './routes/users';
 import analytics from './routes/analytics';
 import health from './routes/health';
 import config from './routes/config';
+import sponsor from './routes/sponsor';
 
 const app = new Hono();
 
@@ -23,6 +24,7 @@ app.route('/users', users);
 app.route('/analytics', analytics);
 app.route('/health', health);
 app.route('/config', config);
+app.route('/sponsor', sponsor);
 
 // Root
 app.get('/', (c) => c.json({
@@ -37,7 +39,8 @@ app.get('/', (c) => c.json({
     '/users',
     '/analytics',
     '/health',
-    '/config'
+    '/config',
+    '/sponsor'
   ]
 }));
 

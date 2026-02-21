@@ -90,6 +90,22 @@ export function initializeDatabase(db: Database) {
     )
   `);
 
+  // Sponsorship requests table (ERC-4337 paymaster)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sponsorship_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      nonce INTEGER NOT NULL,
+      valid_until INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      user_op_hash TEXT,
+      status TEXT DEFAULT 'issued'
+    )
+  `);
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_sponsor_account_time ON sponsorship_requests(account, created_at)`);
+
   // Indexer state (track last indexed block)
   db.run(`
     CREATE TABLE IF NOT EXISTS indexer_state (
