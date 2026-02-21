@@ -23,7 +23,6 @@ import {
 import { useQuote } from '@/hooks/api/use-quote';
 import { usePosition } from '@/hooks/api/use-position';
 import { useUserStatus } from '@/hooks/blockchain/use-user-status';
-import { useContractWrite } from '@/hooks/blockchain/use-contract-write';
 import { useMaedBalance } from '@/hooks/blockchain/use-maed-balance';
 import { CONTRACTS } from '@/lib/contracts';
 import {
@@ -54,14 +53,9 @@ import { TimeframeSelector } from '@/components/charts/timeframe-selector';
 import { usePriceChart } from '@/hooks/api/use-price-chart';
 import { useLivePrice } from '@/hooks/api/use-prices';
 import { useFxRate } from '@/hooks/blockchain/use-fx-rate';
-import { useSponsorshipStatus } from '@/hooks/blockchain/use-sponsorship-status';
 import { useSponsoredWrite } from '@/hooks/blockchain/use-sponsored-write';
-import { Fuel } from 'lucide-react';
 
 type TradeMode = 'buy' | 'sell';
-type GasMode = 'standard' | 'sponsored' | 'erc20';
-
-const ERC20_PAYMASTER: `0x${string}` = '0x21A223F0efD59757750c229B77C551D3fC7b04C0';
 
 // Featured assets appear first: Gold, Silver, Crude Oil (WTI)
 const FEATURED_SYMBOLS = ['XAU', 'XAG', 'WTI'];
@@ -85,7 +79,6 @@ export default function TradePage() {
   const [mode, setMode] = useState<TradeMode>('buy');
   const [amount, setAmount] = useState('');
   const [mintDialogOpen, setMintDialogOpen] = useState(false);
-  const [gasMode, setGasMode] = useState<GasMode>('sponsored');
 
   // Market selector dropdown
   const [marketOpen, setMarketOpen] = useState(false);
@@ -170,27 +163,9 @@ export default function TradePage() {
   // Check user status
   const { data: userStatus, isLoading: statusLoading } = useUserStatus();
 
-  // Contract write hook (standard EOA)
-  const { writeContract: executeTradeStandard, isLoading: isTradingStandard } =
-    useContractWrite();
-
-  // Sponsored write hooks
-  const { writeContract: executeSponsoredNative, isLoading: isSponsoredNativeLoading } =
+  // Sponsored write hook (gas-free)
+  const { writeContract: executeTrade, isLoading: isTrading } =
     useSponsoredWrite('native');
-  const { writeContract: executeSponsoredErc20, isLoading: isSponsoredErc20Loading } =
-    useSponsoredWrite('erc20');
-
-  // Sponsorship status
-  const { isEnabled: sponsorshipEnabled, isEligible: sponsorshipEligible, remaining: sponsoredRemaining } =
-    useSponsorshipStatus();
-
-  // Pick the right executor based on gas mode
-  const executeTrade = gasMode === 'sponsored'
-    ? executeSponsoredNative
-    : gasMode === 'erc20'
-      ? executeSponsoredErc20
-      : executeTradeStandard;
-  const isTrading = isTradingStandard || isSponsoredNativeLoading || isSponsoredErc20Loading;
 
   // DDSC balance
   const { balance: maedBalance, isLoading: maedLoading } = useMaedBalance();
@@ -292,10 +267,8 @@ export default function TradePage() {
         // Buy: amount is DDSC (6 decimals)
         const amountWei = parseUnits(amount, 6);
 
-        // Check DDSC allowance — must match execution context
-        const allowanceAddress = gasMode === 'standard'
-          ? wallet.address as `0x${string}`
-          : smartAccountAddress as `0x${string}`;
+        // Check DDSC allowance — smart account is the spender
+        const allowanceAddress = smartAccountAddress as `0x${string}`;
 
         if (!allowanceAddress) {
           toast.error('Smart account loading, please wait.');
@@ -306,28 +279,6 @@ export default function TradePage() {
           chain: adiTestnet,
           transport: http(),
         });
-
-        // ERC20 gas mode: smart account must approve the ERC20 paymaster to
-        // spend DDSC for gas fees. This one-time approval uses native
-        // sponsorship (can't pay DDSC gas before paymaster is approved).
-        if (gasMode === 'erc20') {
-          const pmAllowance = (await publicClient.readContract({
-            address: CONTRACTS.MockDirham.address,
-            abi: CONTRACTS.MockDirham.abi,
-            functionName: 'allowance',
-            args: [allowanceAddress, ERC20_PAYMASTER],
-          })) as bigint;
-
-          if (pmAllowance < maxUint256 / BigInt(2)) {
-            toast.info('One-time: approving DDSC for gas payments...');
-            await executeSponsoredNative({
-              address: CONTRACTS.MockDirham.address,
-              abi: CONTRACTS.MockDirham.abi,
-              functionName: 'approve',
-              args: [ERC20_PAYMASTER, maxUint256],
-            });
-          }
-        }
 
         const allowance = (await publicClient.readContract({
           address: CONTRACTS.MockDirham.address,
@@ -793,62 +744,6 @@ export default function TradePage() {
                 </div>
               )}
 
-              {/* Gas Mode Selector */}
-              {sponsorshipEnabled && (
-                <div className="bg-dark-900/60 rounded-xl p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Fuel className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Gas Payment</span>
-                    </div>
-                    {gasMode !== 'standard' && sponsorshipEligible && (
-                      <span className="text-[10px] text-gold">
-                        {sponsoredRemaining} left this hour
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-1 rounded-lg bg-dark-950 p-0.5">
-                    <button
-                      onClick={() => setGasMode('standard')}
-                      className={cn(
-                        'flex-1 text-xs py-1.5 rounded-md font-medium transition-all',
-                        gasMode === 'standard'
-                          ? 'bg-dark-700 text-foreground'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      Standard
-                    </button>
-                    <button
-                      onClick={() => setGasMode('sponsored')}
-                      disabled={!sponsorshipEligible}
-                      className={cn(
-                        'flex-1 text-xs py-1.5 rounded-md font-medium transition-all',
-                        gasMode === 'sponsored'
-                          ? 'bg-gold/15 text-gold'
-                          : 'text-muted-foreground hover:text-foreground',
-                        !sponsorshipEligible && 'opacity-40 cursor-not-allowed'
-                      )}
-                    >
-                      Sponsored
-                    </button>
-                    <button
-                      onClick={() => setGasMode('erc20')}
-                      disabled={!sponsorshipEligible}
-                      className={cn(
-                        'flex-1 text-xs py-1.5 rounded-md font-medium transition-all',
-                        gasMode === 'erc20'
-                          ? 'bg-gold/15 text-gold'
-                          : 'text-muted-foreground hover:text-foreground',
-                        !sponsorshipEligible && 'opacity-40 cursor-not-allowed'
-                      )}
-                    >
-                      Pay DDSC
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* Execute Button */}
               <Button
                 onClick={handleTrade}
@@ -874,23 +769,9 @@ export default function TradePage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    {gasMode !== 'standard' ? (
-                      <Fuel className="h-4 w-4" />
-                    ) : (
-                      <Zap className="h-4 w-4" />
-                    )}
+                    <Zap className="h-4 w-4" />
                     {mode === 'buy' ? 'Buy' : 'Sell'}{' '}
                     {selectedAsset?.tokenSymbol}
-                    {gasMode === 'sponsored' && (
-                      <Badge variant="default" className="text-[10px] ml-1 py-0 px-1.5">
-                        Gas Free
-                      </Badge>
-                    )}
-                    {gasMode === 'erc20' && (
-                      <Badge variant="default" className="text-[10px] ml-1 py-0 px-1.5">
-                        DDSC Gas
-                      </Badge>
-                    )}
                   </div>
                 )}
               </Button>
