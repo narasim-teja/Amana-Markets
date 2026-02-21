@@ -80,15 +80,10 @@ export function MainNav() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-gold to-gold-dark rounded-lg flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-dark-950" />
-            </div>
-            <div>
-              <h1 className="font-display text-lg font-semibold text-gold">
-                ADI Commodities
-              </h1>
-              <p className="text-xs text-muted-foreground">Premium Trading</p>
-            </div>
+            <img src="/logo.png" alt="Amanah" className="w-9 h-9 rounded-lg" />
+            <h1 className="font-display text-xl font-semibold text-gold">
+              Amanah
+            </h1>
           </Link>
 
           {/* Desktop Navigation */}

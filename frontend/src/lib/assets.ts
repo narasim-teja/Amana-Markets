@@ -15,6 +15,8 @@ export interface ApiAsset {
   token_address?: `0x${string}`;
   status?: string;
   spread?: number;
+  spread_bps?: number;
+  is_paused?: number;
   exposure?: string;
   max_exposure?: string;
   volume_24h?: string;
@@ -396,6 +398,11 @@ export function getAssetIcon(assetId: string): string {
 export function enrichAssetWithMetadata(apiAsset: ApiAsset): AssetMetadata {
   const metadata = ASSET_METADATA[apiAsset.asset_id];
 
+  const spreadPercent = apiAsset.spread_bps != null
+    ? apiAsset.spread_bps / 100
+    : apiAsset.spread;
+  const status = apiAsset.is_paused ? 'paused' : (apiAsset.status || 'active');
+
   if (!metadata) {
     return {
       assetId: apiAsset.asset_id,
@@ -408,6 +415,8 @@ export function enrichAssetWithMetadata(apiAsset: ApiAsset): AssetMetadata {
       category: 'commodity',
       decimals: 18,
       tokenAddress: apiAsset.token_address,
+      spread: spreadPercent,
+      status,
     };
   }
 
@@ -416,5 +425,7 @@ export function enrichAssetWithMetadata(apiAsset: ApiAsset): AssetMetadata {
     tokenAddress: apiAsset.token_address || metadata.tokenAddress,
     name: apiAsset.name || metadata.name,
     symbol: apiAsset.symbol || metadata.symbol,
+    spread: spreadPercent,
+    status,
   };
 }

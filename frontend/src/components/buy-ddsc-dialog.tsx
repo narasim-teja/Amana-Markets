@@ -213,7 +213,7 @@ export function BuyDDSCDialog({ open, onOpenChange }: BuyDDSCDialogProps) {
           </Button>
 
           <p className="text-xs text-center text-muted-foreground/60">
-            Gas sponsored on ADI Testnet
+            Gas sponsored
           </p>
         </div>
       </DialogContent>

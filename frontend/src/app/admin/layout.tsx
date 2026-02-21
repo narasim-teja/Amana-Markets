@@ -16,7 +16,6 @@ import {
   Package,
   TrendingUp,
   Landmark,
-  Activity,
   LogOut,
   Fuel,
 } from 'lucide-react';
@@ -84,9 +83,12 @@ export default function AdminLayout({
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-display text-gold">
-                ADI Commodities · Admin
-              </h1>
+              <div className="flex items-center gap-3">
+                <img src="/logo.png" alt="Amanah" className="w-7 h-7 rounded" />
+                <h1 className="text-xl font-display text-gold">
+                  Amanah Admin
+                </h1>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right text-sm">
@@ -125,9 +127,6 @@ export default function AdminLayout({
             </NavLink>
             <NavLink href="/admin/treasury" icon={Landmark}>
               Treasury
-            </NavLink>
-            <NavLink href="/admin/oracle" icon={Activity}>
-              Price Feeds
             </NavLink>
             <NavLink href="/admin/sponsorship" icon={Fuel}>
               Gas Sponsorship

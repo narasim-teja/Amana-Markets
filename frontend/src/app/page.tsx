@@ -9,15 +9,16 @@ export default function HomePage() {
       <div className="text-center space-y-8 max-w-4xl">
         {/* Hero Section */}
         <div className="space-y-4">
+          <img src="/logo.png" alt="Amanah" className="w-20 h-20 mx-auto mb-4" />
           <h1 className="text-6xl md:text-7xl font-display text-gold mb-6">
-            ADI Commodities
+            Amanah
           </h1>
           <p className="text-2xl md:text-3xl text-muted-foreground">
             Institutional-Grade Commodity Trading
           </p>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Trade tokenized gold, silver, and oil with real-time pricing on the ADI
-            blockchain
+            Trade tokenized gold, silver, and oil with real-time oracle pricing
+            on-chain
           </p>
         </div>
 

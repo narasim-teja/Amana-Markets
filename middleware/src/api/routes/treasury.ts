@@ -34,29 +34,34 @@ app.get('/stats', async (c) => {
 
 // GET /treasury/exposure - Asset exposure breakdown
 app.get('/exposure', async (c) => {
-  const totalExposure = await publicClient.readContract({
-    address: CONTRACTS.LiquidityVault.address,
-    abi: CONTRACTS.LiquidityVault.abi,
-    functionName: 'totalExposure'
-  }) as bigint;
+  // Get all registered assets
+  const assets = db.query(`SELECT asset_id FROM assets`).all() as { asset_id: string }[];
 
-  // Get per-asset exposure from latest exposure events
-  const exposures = db.query(`
-    SELECT asset_id, asset_exposure
-    FROM vault_events
-    WHERE type = 'exposure'
-      AND asset_id IS NOT NULL
-      AND timestamp = (
-        SELECT MAX(timestamp)
-        FROM vault_events ve2
-        WHERE ve2.asset_id = vault_events.asset_id
-          AND ve2.type = 'exposure'
-      )
-  `).all();
+  // Read totalExposure and per-asset exposure directly from contract
+  const [totalExposure, ...perAssetExposures] = await Promise.all([
+    publicClient.readContract({
+      address: CONTRACTS.LiquidityVault.address,
+      abi: CONTRACTS.LiquidityVault.abi,
+      functionName: 'totalExposure'
+    }) as Promise<bigint>,
+    ...assets.map(a =>
+      publicClient.readContract({
+        address: CONTRACTS.LiquidityVault.address,
+        abi: CONTRACTS.LiquidityVault.abi,
+        functionName: 'assetExposure',
+        args: [a.asset_id as `0x${string}`]
+      }) as Promise<bigint>
+    )
+  ]);
+
+  const assetExposures = assets.map((a, i) => ({
+    asset_id: a.asset_id,
+    asset_exposure: perAssetExposures[i].toString()
+  }));
 
   return c.json({
     totalExposure: totalExposure.toString(),
-    assetExposures: exposures
+    assetExposures
   });
 });
 

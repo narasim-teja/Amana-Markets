@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { apiClient } from '@/lib/api-client';
 import { getAssetMetadata } from '@/lib/assets';
-import { formatCompactNumber, formatAED, formatRelativeTime, isPriceStale, shortenAddress } from '@/lib/format';
+import { formatCompactNumber, formatAED, formatRelativeTime, shortenAddress } from '@/lib/format';
 import { REFETCH_INTERVAL_FAST, REFETCH_INTERVAL_SLOW } from '@/lib/constants';
 import {
   DollarSign,
@@ -21,8 +21,6 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
-  Clock,
-  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -95,7 +93,7 @@ export default function AdminOverviewPage() {
       <div>
         <h2 className="text-3xl font-display text-gold mb-2">Dashboard Overview</h2>
         <p className="text-muted-foreground">
-          Real-time monitoring and control center for ADI Commodities Marketplace
+          Real-time monitoring and control center for Amanah
         </p>
       </div>
 
@@ -221,29 +219,7 @@ export default function AdminOverviewPage() {
       {/* Oracle Status - Enhanced */}
       <Card className="premium-card">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-display">Oracle Status</CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge
-                variant="outline"
-                className={cn(
-                  'gap-1.5',
-                  healthySources === totalSources && totalSources > 0
-                    ? 'border-emerald-500/30 text-emerald-400'
-                    : healthySources > 0
-                      ? 'border-yellow-500/30 text-yellow-400'
-                      : 'border-red-500/30 text-red-400'
-                )}
-              >
-                <Zap className="h-3 w-3" />
-                {healthySources}/{totalSources} Sources Active
-              </Badge>
-              <Badge variant="outline" className="gap-1.5 border-dark-600 text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                Relayer: 20min cycle
-              </Badge>
-            </div>
-          </div>
+          <CardTitle className="text-xl font-display">Price Feeds</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -253,32 +229,46 @@ export default function AdminOverviewPage() {
               if (price.sources?.dia) sources.push({ name: 'DIA', ...price.sources.dia });
               if (price.sources?.redstone) sources.push({ name: 'RedStone', ...price.sources.redstone });
 
-              const activeCount = sources.filter((s) => s.status === 'ok').length;
+              // Pick the best source: prefer active (ok), then most recent timestamp
+              const bestSource = sources
+                .sort((a, b) => {
+                  if (a.status === 'ok' && b.status !== 'ok') return -1;
+                  if (b.status === 'ok' && a.status !== 'ok') return 1;
+                  return (b.timestamp || 0) - (a.timestamp || 0);
+                })[0] || null;
+
               const medianPrice = price.median ? parseFloat(price.median) : 0;
+              const isActive = bestSource?.status === 'ok';
 
               return (
                 <div key={price.assetId} className="p-4 bg-dark-800/30 rounded-lg space-y-3">
                   {/* Asset Header */}
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold">{price.name}</h4>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'text-xs',
-                        activeCount === sources.length
-                          ? 'border-emerald-500/30 text-emerald-400'
-                          : activeCount > 0
-                            ? 'border-yellow-500/30 text-yellow-400'
-                            : 'border-red-500/30 text-red-400'
-                      )}
-                    >
-                      {activeCount}/{sources.length}
-                    </Badge>
+                    {bestSource ? (
+                      <div className="flex items-center gap-1.5">
+                        {isActive ? (
+                          <CheckCircle className="h-3 w-3 text-emerald-400" />
+                        ) : (
+                          <AlertTriangle className="h-3 w-3 text-yellow-400" />
+                        )}
+                        <span className={cn(
+                          'text-xs',
+                          isActive ? 'text-emerald-400' : 'text-yellow-400'
+                        )}>
+                          {bestSource.name}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <XCircle className="h-3 w-3 text-red-400" />
+                        <span className="text-xs text-red-400">Offline</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Median Price */}
+                  {/* Price */}
                   <div className="text-center py-2 bg-dark-900/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground mb-0.5">Median</p>
                     <p className="font-mono text-lg font-bold text-gold">
                       ${medianPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
@@ -288,42 +278,25 @@ export default function AdminOverviewPage() {
                       </p>
                     )}
                   </div>
-
-                  {/* Sources */}
-                  <div className="space-y-2">
-                    {sources.map((source) => (
-                      <OracleSourceStatus
-                        key={source.name}
-                        name={source.name}
-                        price={source.price}
-                        timestamp={source.timestamp}
-                        status={source.status}
-                      />
-                    ))}
-                    {sources.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-2">No sources</p>
-                    )}
-                  </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Staleness Info */}
+          {/* Legend */}
           <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground border-t border-dark-700 pt-3">
             <div className="flex items-center gap-1.5">
               <CheckCircle className="h-3 w-3 text-emerald-400" />
-              <span>Fresh ({"<"}24h)</span>
+              <span>Active</span>
             </div>
             <div className="flex items-center gap-1.5">
               <AlertTriangle className="h-3 w-3 text-yellow-400" />
-              <span>Stale ({">"}24h)</span>
+              <span>Stale</span>
             </div>
             <div className="flex items-center gap-1.5">
               <XCircle className="h-3 w-3 text-red-400" />
-              <span>Error</span>
+              <span>Offline</span>
             </div>
-            <span className="ml-auto">On-chain staleness: 24h | Relayer cycle: 20min</span>
           </div>
         </CardContent>
       </Card>
@@ -399,37 +372,6 @@ function StatsCard({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-interface OracleSourceStatusProps {
-  name: string;
-  price: string;
-  timestamp: number;
-  status: string;
-}
-
-function OracleSourceStatus({ name, price, timestamp, status }: OracleSourceStatusProps) {
-  const isOk = status === 'ok';
-  const isError = status === 'error';
-
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <div className="flex items-center gap-2">
-        {isError ? (
-          <XCircle className="h-3 w-3 text-red-400" />
-        ) : isOk ? (
-          <CheckCircle className="h-3 w-3 text-emerald-400" />
-        ) : (
-          <AlertTriangle className="h-3 w-3 text-yellow-400" />
-        )}
-        <span className="text-muted-foreground">{name}</span>
-      </div>
-      <div className="text-right">
-        <p className="font-mono text-xs">${parseFloat(price).toFixed(2)}</p>
-        <p className="text-xs text-muted-foreground">{formatRelativeTime(timestamp)}</p>
-      </div>
-    </div>
   );
 }
 

@@ -49,7 +49,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         appearance: {
           theme: 'dark',
           accentColor: '#C9A96E', // Gold accent matching brand
-          logo: '/logo.svg',
+          logo: '/logo.png',
         },
         // Custom chain configuration (ADI Testnet not in Privy's default list)
         defaultChain: adiTestnet,

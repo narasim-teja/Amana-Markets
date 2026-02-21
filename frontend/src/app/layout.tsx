@@ -28,10 +28,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'ADI Commodities Marketplace',
-  description: 'Institutional-grade decentralized commodities trading platform on ADI Chain',
+  title: 'Amanah',
+  description: 'Institutional-grade decentralized commodities trading platform',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/logo.png',
   },
 };
 

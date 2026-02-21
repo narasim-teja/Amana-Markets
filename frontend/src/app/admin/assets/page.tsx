@@ -32,12 +32,10 @@ import {
   Pause,
   Play,
   Settings,
-  TrendingUp,
   DollarSign,
   AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { parseUnits } from 'viem';
 
 export default function AssetsManagementPage() {
   // Fetch assets
@@ -51,21 +49,27 @@ export default function AssetsManagementPage() {
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
-  // Fetch treasury stats for exposure data
-  const { data: treasuryStats } = useQuery({
-    queryKey: ['treasuryStats'],
-    queryFn: () => apiClient.getTreasuryStats(),
+  // Fetch per-asset exposure directly from contract
+  const { data: exposureData } = useQuery({
+    queryKey: ['treasuryExposure'],
+    queryFn: () => apiClient.getTreasuryExposure(),
     refetchInterval: REFETCH_INTERVAL_SLOW,
   });
 
   const assets: AssetMetadata[] = assetsData || [];
+
+  // Build a lookup map for exposure by asset_id
+  const exposureMap = new Map<string, string>();
+  exposureData?.assetExposures?.forEach((e: { asset_id: string; asset_exposure: string }) => {
+    exposureMap.set(e.asset_id, e.asset_exposure);
+  });
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-3xl font-display text-gold mb-2">Asset Management</h2>
         <p className="text-muted-foreground">
-          Control trading parameters, spreads, and exposure limits
+          Control trading parameters and fees
         </p>
       </div>
 
@@ -78,28 +82,11 @@ export default function AssetsManagementPage() {
           <AssetCard
             key={asset.assetId}
             asset={asset}
+            openInterest={exposureMap.get(asset.assetId) || '0'}
             onUpdate={refetchAssets}
           />
         ))}
       </div>
-
-      {/* Capital Utilization Warning */}
-      {treasuryStats && treasuryStats.utilization > 80 && (
-        <Card className="premium-card border-warning">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-warning" />
-              <CardTitle className="text-lg">High Capital Utilization</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Capital utilization is at {treasuryStats.utilization.toFixed(2)}%. Consider
-              adjusting exposure limits or pausing high-risk assets.
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
@@ -109,10 +96,11 @@ interface AssetCardProps {
   onUpdate: () => void;
 }
 
-function AssetCard({ asset, onUpdate }: AssetCardProps) {
+function AssetCard({ asset, openInterest, onUpdate }: AssetCardProps & { openInterest: string }) {
   const { writeContract: executePause, isLoading: isPausing } = useContractWrite();
 
   const isPaused = asset.status === 'paused';
+  const oiValue = parseFloat(openInterest) / 1e6;
 
   const handleTogglePause = async () => {
     try {
@@ -139,8 +127,8 @@ function AssetCard({ asset, onUpdate }: AssetCardProps) {
 
   return (
     <Card className="premium-card">
-      <CardHeader>
-        <div className="flex items-start justify-between">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-full flex items-center justify-center"
@@ -150,7 +138,7 @@ function AssetCard({ asset, onUpdate }: AssetCardProps) {
             </div>
             <div>
               <CardTitle className="text-lg font-display">{asset.name}</CardTitle>
-              <p className="text-sm text-muted-foreground font-mono">{asset.symbol}</p>
+              <p className="text-xs text-muted-foreground font-mono">{asset.tokenSymbol}</p>
             </div>
           </div>
           <Badge variant={isPaused ? 'destructive' : 'default'}>
@@ -160,36 +148,27 @@ function AssetCard({ asset, onUpdate }: AssetCardProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-muted-foreground mb-1">Spread</p>
-            <p className="font-mono font-semibold">{asset.spread || '0'}%</p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between py-2 border-b border-dark-700/50">
+            <span className="text-sm text-muted-foreground">Trading Fee</span>
+            <span className="font-mono font-semibold text-sm">{asset.spread || '0'}%</span>
           </div>
-          <div>
-            <p className="text-muted-foreground mb-1">Exposure</p>
-            <p className="font-mono font-semibold">
-              {asset.exposure ? formatCompactNumber(parseFloat(asset.exposure) / 1e6) : '0'} DDSC
-            </p>
+          <div className="flex items-center justify-between py-2 border-b border-dark-700/50">
+            <span className="text-sm text-muted-foreground">Open Interest</span>
+            <span className="font-mono font-semibold text-sm">
+              {formatCompactNumber(oiValue)} DDSC
+            </span>
           </div>
-          <div>
-            <p className="text-muted-foreground mb-1">Max Exposure</p>
-            <p className="font-mono font-semibold">
-              {asset.maxExposure
-                ? formatCompactNumber(parseFloat(asset.maxExposure) / 1e6)
-                : '∞'}{' '}
-              DDSC
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground mb-1">24h Volume</p>
-            <p className="font-mono font-semibold">
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm text-muted-foreground">24h Volume</span>
+            <span className="font-mono font-semibold text-sm">
               {asset.volume24h ? formatCompactNumber(parseFloat(asset.volume24h) / 1e6) : '0'} DDSC
-            </p>
+            </span>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-1">
           <Button
             size="sm"
             variant={isPaused ? 'default' : 'destructive'}
@@ -209,22 +188,21 @@ function AssetCard({ asset, onUpdate }: AssetCardProps) {
               </>
             )}
           </Button>
-          <AdjustSpreadDialog asset={asset} onUpdate={onUpdate} />
-          <UpdateLimitsDialog asset={asset} onUpdate={onUpdate} />
+          <AdjustFeeDialog asset={asset} onUpdate={onUpdate} />
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function AdjustSpreadDialog({ asset, onUpdate }: AssetCardProps) {
-  const [spreadBps, setSpreadBps] = useState('');
+function AdjustFeeDialog({ asset, onUpdate }: AssetCardProps) {
+  const [feeBps, setFeeBps] = useState('');
   const [open, setOpen] = useState(false);
   const { writeContract, isLoading } = useContractWrite();
 
-  const handleUpdateSpread = async () => {
-    if (!spreadBps || parseFloat(spreadBps) < 0) {
-      toast.error('Please enter a valid spread (basis points)');
+  const handleUpdateFee = async () => {
+    if (!feeBps || parseFloat(feeBps) < 0) {
+      toast.error('Please enter a valid fee (basis points)');
       return;
     }
 
@@ -233,14 +211,14 @@ function AdjustSpreadDialog({ asset, onUpdate }: AssetCardProps) {
         address: CONTRACTS.AssetRegistry.address,
         abi: CONTRACTS.AssetRegistry.abi,
         functionName: 'updateSpread',
-        args: [asset.assetId, BigInt(Math.floor(parseFloat(spreadBps)))],
+        args: [asset.assetId, BigInt(Math.floor(parseFloat(feeBps)))],
       });
 
       setOpen(false);
-      setSpreadBps('');
+      setFeeBps('');
       onUpdate();
     } catch (error) {
-      console.error('Update spread failed:', error);
+      console.error('Update fee failed:', error);
     }
   };
 
@@ -248,25 +226,25 @@ function AdjustSpreadDialog({ asset, onUpdate }: AssetCardProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
-          <TrendingUp className="h-3 w-3" />
+          <DollarSign className="h-3 w-3" />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adjust Spread - {asset.name}</DialogTitle>
+          <DialogTitle>Adjust Fee - {asset.name}</DialogTitle>
           <DialogDescription>
-            Set the trading spread in basis points (1 bps = 0.01%)
+            Set the trading fee in basis points (1 bps = 0.01%)
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div>
-            <Label htmlFor="spread">Spread (basis points)</Label>
+            <Label htmlFor="fee">Fee (basis points)</Label>
             <Input
-              id="spread"
+              id="fee"
               type="number"
               placeholder="e.g., 50 for 0.5%"
-              value={spreadBps}
-              onChange={(e) => setSpreadBps(e.target.value)}
+              value={feeBps}
+              onChange={(e) => setFeeBps(e.target.value)}
               min="0"
               step="1"
             />
@@ -279,85 +257,8 @@ function AdjustSpreadDialog({ asset, onUpdate }: AssetCardProps) {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleUpdateSpread} disabled={isLoading} className="btn-gold">
-            {isLoading ? 'Updating...' : 'Update Spread'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function UpdateLimitsDialog({ asset, onUpdate }: AssetCardProps) {
-  const [maxExposure, setMaxExposure] = useState('');
-  const [open, setOpen] = useState(false);
-  const { writeContract, isLoading } = useContractWrite();
-
-  const handleUpdateLimits = async () => {
-    if (!maxExposure || parseFloat(maxExposure) <= 0) {
-      toast.error('Please enter a valid max exposure amount');
-      return;
-    }
-
-    try {
-      // Convert DDSC to wei (6 decimals)
-      const maxExposureWei = parseUnits(maxExposure, 6);
-
-      await writeContract({
-        address: CONTRACTS.AssetRegistry.address,
-        abi: CONTRACTS.AssetRegistry.abi,
-        functionName: 'updateExposureLimits',
-        args: [asset.assetId, maxExposureWei],
-      });
-
-      setOpen(false);
-      setMaxExposure('');
-      onUpdate();
-    } catch (error) {
-      console.error('Update limits failed:', error);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Settings className="h-3 w-3" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Update Exposure Limits - {asset.name}</DialogTitle>
-          <DialogDescription>
-            Set maximum treasury exposure for this asset
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="maxExposure">Max Exposure (DDSC)</Label>
-            <Input
-              id="maxExposure"
-              type="number"
-              placeholder="e.g., 1000000"
-              value={maxExposure}
-              onChange={(e) => setMaxExposure(e.target.value)}
-              min="0"
-              step="1000"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Current:{' '}
-              {asset.maxExposure
-                ? `${formatCompactNumber(parseFloat(asset.maxExposure) / 1e6)} DDSC`
-                : 'No limit'}
-            </p>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleUpdateLimits} disabled={isLoading} className="btn-gold">
-            {isLoading ? 'Updating...' : 'Update Limits'}
+          <Button onClick={handleUpdateFee} disabled={isLoading} className="btn-gold">
+            {isLoading ? 'Updating...' : 'Update Fee'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -366,11 +267,7 @@ function UpdateLimitsDialog({ asset, onUpdate }: AssetCardProps) {
 }
 
 function GlobalControlsCard() {
-  const [fxRate, setFxRate] = useState('');
-  const [maxUtilization, setMaxUtilization] = useState('');
   const { writeContract: executePauseAll, isLoading: isPausingAll } = useContractWrite();
-  const { writeContract: executeFxRate, isLoading: isUpdatingFx } = useContractWrite();
-  const { writeContract: executeUtilization, isLoading: isUpdatingUtil } = useContractWrite();
 
   const handleEmergencyPause = async () => {
     try {
@@ -382,52 +279,6 @@ function GlobalControlsCard() {
       });
     } catch (error) {
       console.error('Emergency pause failed:', error);
-    }
-  };
-
-  const handleUpdateFxRate = async () => {
-    if (!fxRate || parseFloat(fxRate) <= 0) {
-      toast.error('Please enter a valid FX rate');
-      return;
-    }
-
-    try {
-      // Convert to 8 decimals for oracle precision
-      const fxRateWei = parseUnits(fxRate, 8);
-
-      await executeFxRate({
-        address: CONTRACTS.OracleRouter.address,
-        abi: CONTRACTS.OracleRouter.abi,
-        functionName: 'updateFxRate',
-        args: [fxRateWei],
-      });
-
-      setFxRate('');
-    } catch (error) {
-      console.error('Update FX rate failed:', error);
-    }
-  };
-
-  const handleUpdateMaxUtilization = async () => {
-    if (!maxUtilization || parseFloat(maxUtilization) <= 0 || parseFloat(maxUtilization) > 100) {
-      toast.error('Please enter a valid utilization percentage (0-100)');
-      return;
-    }
-
-    try {
-      // Convert percentage to basis points (50% = 5000 bps)
-      const utilizationBps = BigInt(Math.floor(parseFloat(maxUtilization) * 100));
-
-      await executeUtilization({
-        address: CONTRACTS.Treasury.address,
-        abi: CONTRACTS.Treasury.abi,
-        functionName: 'updateMaxUtilization',
-        args: [utilizationBps],
-      });
-
-      setMaxUtilization('');
-    } catch (error) {
-      console.error('Update max utilization failed:', error);
     }
   };
 
@@ -454,62 +305,6 @@ function GlobalControlsCard() {
           </Button>
           <p className="text-xs text-muted-foreground mt-2">
             Immediately halt all buy/sell operations across all assets
-          </p>
-        </div>
-
-        {/* FX Rate */}
-        <div>
-          <Label htmlFor="fxRate" className="text-base mb-2 block">
-            AED/USD Exchange Rate
-          </Label>
-          <div className="flex gap-2">
-            <Input
-              id="fxRate"
-              type="number"
-              placeholder="e.g., 3.6725"
-              value={fxRate}
-              onChange={(e) => setFxRate(e.target.value)}
-              step="0.0001"
-            />
-            <Button
-              onClick={handleUpdateFxRate}
-              disabled={isUpdatingFx || !fxRate}
-              className="btn-gold"
-            >
-              {isUpdatingFx ? 'Updating...' : 'Update'}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Central bank peg rate for AED to USD conversion
-          </p>
-        </div>
-
-        {/* Max Capital Utilization */}
-        <div>
-          <Label htmlFor="maxUtil" className="text-base mb-2 block">
-            Max Capital Utilization (%)
-          </Label>
-          <div className="flex gap-2">
-            <Input
-              id="maxUtil"
-              type="number"
-              placeholder="e.g., 85"
-              value={maxUtilization}
-              onChange={(e) => setMaxUtilization(e.target.value)}
-              min="0"
-              max="100"
-              step="1"
-            />
-            <Button
-              onClick={handleUpdateMaxUtilization}
-              disabled={isUpdatingUtil || !maxUtilization}
-              className="btn-gold"
-            >
-              {isUpdatingUtil ? 'Updating...' : 'Update'}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Maximum percentage of treasury capital that can be used as exposure
           </p>
         </div>
       </CardContent>
