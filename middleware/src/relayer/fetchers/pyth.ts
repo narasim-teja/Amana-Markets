@@ -22,7 +22,7 @@ export async function fetchPythPrices(): Promise<PriceData[]> {
   const url = `${ORACLE_APIS.PYTH_HERMES}?${feedIds.map(id => `ids[]=${id}`).join('&')}`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const text = await response.text();
 
     if (!text.startsWith('{') && !text.startsWith('[')) {

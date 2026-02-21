@@ -10,11 +10,8 @@ interface DIAResponse {
   Timestamp: string;
 }
 
-const FETCH_DELAY_MS = 100; // 100ms between requests to avoid rate limiting
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+const CONCURRENCY = 10; // Parallel requests
+const PER_REQUEST_TIMEOUT = 3000; // 3s per request
 
 export async function fetchDIAPrices(): Promise<PriceData[]> {
   const diaAssets = ASSETS.filter(a => a.diaCategory && a.diaTicker);
@@ -24,39 +21,44 @@ export async function fetchDIAPrices(): Promise<PriceData[]> {
   let successCount = 0;
   let failCount = 0;
 
-  for (const asset of diaAssets) {
-    try {
-      const url = `${ORACLE_APIS.DIA_RWA}/${asset.diaCategory}/${asset.diaTicker}`;
-      const response = await fetch(url);
+  // Process in parallel batches
+  for (let i = 0; i < diaAssets.length; i += CONCURRENCY) {
+    const batch = diaAssets.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map(async (asset) => {
+        const url = `${ORACLE_APIS.DIA_RWA}/${asset.diaCategory}/${asset.diaTicker}`;
+        const response = await fetch(url, {
+          signal: AbortSignal.timeout(PER_REQUEST_TIMEOUT),
+        });
 
-      if (!response.ok) {
-        failCount++;
-        if (response.status !== 404) {
-          console.warn(`⚠️  DIA ${asset.symbol}: HTTP ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
-        continue;
+
+        const data = await response.json() as DIAResponse;
+
+        if (!data.Price || data.Price <= 0) {
+          throw new Error('No price');
+        }
+
+        return {
+          assetId: asset.id,
+          price: parsePrice(data.Price),
+          timestamp: Math.floor(new Date(data.Timestamp).getTime() / 1000),
+          source: 'DIA' as const,
+          decimals: 8
+        } as PriceData;
+      })
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        prices.push(result.value);
+        successCount++;
+      } else {
+        failCount++;
       }
-
-      const data = await response.json() as DIAResponse;
-
-      if (!data.Price || data.Price <= 0) {
-        continue;
-      }
-
-      prices.push({
-        assetId: asset.id,
-        price: parsePrice(data.Price),
-        timestamp: Math.floor(new Date(data.Timestamp).getTime() / 1000),
-        source: 'DIA',
-        decimals: 8
-      });
-      successCount++;
-    } catch (error) {
-      failCount++;
     }
-
-    // Small delay between requests
-    await sleep(FETCH_DELAY_MS);
   }
 
   console.log(`📊 DIA: ${successCount} success, ${failCount} failed out of ${diaAssets.length} assets`);

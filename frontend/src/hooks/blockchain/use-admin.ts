@@ -9,7 +9,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useEffect, useState } from 'react';
 import { createPublicClient, http } from 'viem';
 import { adiTestnet } from '@/lib/chain';
-import { CONTRACTS } from '@/lib/contracts';
+import { CONTRACTS, initContracts } from '@/lib/contracts';
 
 export function useIsAdmin() {
   const { user, ready, authenticated } = usePrivy();
@@ -33,6 +33,9 @@ export function useIsAdmin() {
       }
 
       try {
+        // Wait for contract addresses to load from middleware
+        await initContracts();
+
         // Create public client for reading
         const publicClient = createPublicClient({
           chain: adiTestnet,

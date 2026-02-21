@@ -27,6 +27,7 @@ export async function fetchYahooPrices(): Promise<PriceData[]> {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         },
+        signal: AbortSignal.timeout(5000),
       });
 
       if (!response.ok) {

@@ -18,7 +18,7 @@ export async function fetchRedStonePrices(): Promise<PriceData[]> {
   const url = `${ORACLE_APIS.REDSTONE}?symbols=${symbols}&provider=redstone`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const data = await response.json() as RedStoneResponse;
 
     return redstoneAssets.map(asset => {

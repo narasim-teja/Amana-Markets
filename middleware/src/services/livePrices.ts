@@ -135,11 +135,15 @@ export async function getLivePrices(
     return formatLivePrices(cache.data, assetId, category);
   }
 
+  // Wrap each fetcher with its own 8s timeout so one slow source can't block the rest
+  const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
+    Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))]);
+
   const results = await Promise.allSettled([
-    fetchPythPrices(),
-    fetchDIAPrices(),
-    fetchRedStonePrices(),
-    fetchYahooPrices()
+    withTimeout(fetchPythPrices(), 8000),
+    withTimeout(fetchDIAPrices(), 8000),
+    withTimeout(fetchRedStonePrices(), 8000),
+    withTimeout(fetchYahooPrices(), 8000),
   ]);
 
   const allPrices: PriceData[] = [];

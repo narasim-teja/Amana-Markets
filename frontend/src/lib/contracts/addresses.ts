@@ -5,6 +5,7 @@
  * environment variables used as fallback values.
  */
 
+import { getAddress } from 'viem';
 import { apiClient } from '@/lib/api-client';
 
 // ---------------------------------------------------------------------------
@@ -84,9 +85,10 @@ export async function initContractAddresses(): Promise<void> {
         };
 
         // Only overwrite keys that have a non-null value from the API
+        // Normalize checksums so viem doesn't reject mixed-case addresses
         for (const [key, value] of Object.entries(updates)) {
           if (value) {
-            _addresses[key] = value as `0x${string}`;
+            _addresses[key] = getAddress(value) as `0x${string}`;
           }
         }
 
