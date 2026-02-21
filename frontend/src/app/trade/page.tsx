@@ -5,7 +5,7 @@
  * Professional trading interface for buying/selling commodity tokens
  */
 
-import { useState } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import {
   enrichAssetWithMetadata,
   type AssetMetadata,
   type ApiAsset,
+  type AssetCategory,
 } from '@/lib/assets';
 import { useQuote } from '@/hooks/api/use-quote';
 import { usePosition } from '@/hooks/api/use-position';
@@ -39,6 +40,8 @@ import {
   Coins,
   BarChart3,
   Zap,
+  ChevronDown,
+  Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPublicClient, http, formatUnits, parseUnits, maxUint256 } from 'viem';
@@ -53,6 +56,17 @@ import { useFxRate } from '@/hooks/blockchain/use-fx-rate';
 
 type TradeMode = 'buy' | 'sell';
 
+// Featured assets appear first: Gold, Silver, Crude Oil (WTI)
+const FEATURED_SYMBOLS = ['XAU', 'XAG', 'WTI'];
+
+const CATEGORY_TABS: { value: AssetCategory | 'all'; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'commodity', label: 'Commodities' },
+  { value: 'stock', label: 'Equities' },
+  { value: 'etf', label: 'ETFs' },
+  { value: 'fx', label: 'FX' },
+];
+
 export default function TradePage() {
   const { ready, authenticated, login } = usePrivy();
   const { wallets } = useWallets();
@@ -62,6 +76,24 @@ export default function TradePage() {
   const [mode, setMode] = useState<TradeMode>('buy');
   const [amount, setAmount] = useState('');
   const [mintDialogOpen, setMintDialogOpen] = useState(false);
+
+  // Market selector dropdown
+  const [marketOpen, setMarketOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setMarketOpen(false);
+      }
+    }
+    if (marketOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [marketOpen]);
 
   // Live price from middleware API (USD, 8 decimals) — passed to contract for trades
   const { price: livePrice } = useLivePrice(selectedAssetId);
@@ -82,6 +114,34 @@ export default function TradePage() {
 
   const assets: AssetMetadata[] = assetsData || [];
   const selectedAsset = assets.find((a) => a.assetId === selectedAssetId);
+
+  // Category filter for asset selector
+  const [categoryFilter, setCategoryFilter] = useState<AssetCategory | 'all'>('all');
+
+  const filteredAssets = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    let filtered = categoryFilter === 'all'
+      ? assets
+      : assets.filter((a) => a.category === categoryFilter);
+
+    if (q) {
+      filtered = filtered.filter(
+        (a) =>
+          a.name.toLowerCase().includes(q) ||
+          a.symbol.toLowerCase().includes(q) ||
+          a.tokenSymbol.toLowerCase().includes(q)
+      );
+    }
+
+    return [...filtered].sort((a, b) => {
+      const aIdx = FEATURED_SYMBOLS.indexOf(a.symbol);
+      const bIdx = FEATURED_SYMBOLS.indexOf(b.symbol);
+      if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+      if (aIdx !== -1) return -1;
+      if (bIdx !== -1) return 1;
+      return 0;
+    });
+  }, [assets, categoryFilter, searchQuery]);
 
   // Set default asset if none selected
   if (assets.length > 0 && !selectedAssetId) {
@@ -293,25 +353,135 @@ export default function TradePage() {
         <div className="lg:col-span-8 space-y-4 order-2 lg:order-1">
           {/* Chart Card */}
           <div className="premium-card">
-            {/* Chart Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-3xl font-bold text-foreground">
-                    {displayPrice.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{' '}
-                    <span className="text-lg text-muted-foreground">DDSC</span>
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {selectedAsset?.name ?? 'Commodity'} / DDSC
-                  </span>
-                  {chartPrice > 0 && (
-                    <Badge variant="default" className="text-xs gap-1 ml-2">
-                      <Activity className="h-3 w-3" /> Live
-                    </Badge>
+            {/* Chart Header — Market Selector + Price */}
+            <div className="flex items-start justify-between mb-4 gap-4">
+              <div className="flex items-center gap-4">
+                {/* Market Selector Trigger */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => { setMarketOpen(!marketOpen); setSearchQuery(''); }}
+                    className="flex items-center gap-3 px-4 py-2 rounded-xl border border-dark-700 bg-dark-900/50 hover:border-dark-600 transition-all"
+                  >
+                    {selectedAsset && (
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: `${selectedAsset.color}20` }}
+                      >
+                        <Activity className="h-4 w-4" style={{ color: selectedAsset.color }} />
+                      </div>
+                    )}
+                    <div className="text-left">
+                      <div className="text-sm font-semibold text-foreground">
+                        {selectedAsset?.symbol ?? 'Select'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {selectedAsset?.name ?? 'Market'}
+                      </div>
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', marketOpen && 'rotate-180')} />
+                  </button>
+
+                  {/* Dropdown Panel */}
+                  {marketOpen && (
+                    <div className="absolute top-full left-0 mt-2 w-[380px] bg-dark-900 border border-dark-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+                      {/* Search */}
+                      <div className="p-3 border-b border-dark-700">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <input
+                            type="text"
+                            placeholder="Search markets..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            autoFocus
+                            className="w-full pl-9 pr-3 py-2 text-sm bg-dark-800 border border-dark-600 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold/50"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Category Tabs */}
+                      <div className="flex gap-1 p-2 border-b border-dark-700 overflow-x-auto">
+                        {CATEGORY_TABS.map((tab) => (
+                          <button
+                            key={tab.value}
+                            onClick={() => setCategoryFilter(tab.value)}
+                            className={cn(
+                              'px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap',
+                              categoryFilter === tab.value
+                                ? 'bg-gold/15 text-gold'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-dark-800'
+                            )}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Asset List */}
+                      <div className="max-h-[320px] overflow-y-auto">
+                        {filteredAssets.length === 0 ? (
+                          <div className="p-6 text-center text-sm text-muted-foreground">
+                            No markets found
+                          </div>
+                        ) : (
+                          filteredAssets.map((asset) => {
+                            const isSelected = asset.assetId === selectedAssetId;
+                            return (
+                              <button
+                                key={asset.assetId}
+                                onClick={() => {
+                                  setSelectedAssetId(asset.assetId);
+                                  setAmount('');
+                                  setMarketOpen(false);
+                                  setSearchQuery('');
+                                }}
+                                className={cn(
+                                  'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all hover:bg-dark-800/70',
+                                  isSelected && 'bg-gold/5'
+                                )}
+                              >
+                                <div
+                                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                                  style={{ backgroundColor: `${asset.color}20` }}
+                                >
+                                  <Activity className="h-3.5 w-3.5" style={{ color: asset.color }} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className={cn('text-sm font-medium truncate', isSelected ? 'text-gold' : 'text-foreground')}>
+                                    {asset.symbol}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {asset.name}
+                                  </div>
+                                </div>
+                                <div className="text-xs text-muted-foreground font-mono flex-shrink-0">
+                                  {asset.tokenSymbol}
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
                   )}
+                </div>
+
+                {/* Price Display */}
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-2xl font-bold text-foreground">
+                      {displayPrice.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                      <span className="text-sm text-muted-foreground ml-1">DDSC</span>
+                    </span>
+                    {chartPrice > 0 && (
+                      <Badge variant="default" className="text-xs gap-1">
+                        <Activity className="h-3 w-3" /> Live
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
               <TimeframeSelector selected={range} onChange={setRange} />
@@ -341,51 +511,6 @@ export default function TradePage() {
                 />
               )}
             </div>
-          </div>
-
-          {/* Asset Selector Chips */}
-          <div className="flex gap-3 overflow-x-auto pb-1">
-            {assets.map((asset) => {
-              const isSelected = asset.assetId === selectedAssetId;
-              return (
-                <button
-                  key={asset.assetId}
-                  onClick={() => {
-                    setSelectedAssetId(asset.assetId);
-                    setAmount('');
-                  }}
-                  className={cn(
-                    'flex items-center gap-3 px-5 py-3 rounded-xl border transition-all whitespace-nowrap min-w-fit',
-                    isSelected
-                      ? 'border-gold/50 bg-gold/10 shadow-glow-gold'
-                      : 'border-dark-700 bg-dark-900/50 hover:border-dark-600 hover:bg-dark-800/50'
-                  )}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: `${asset.color}20` }}
-                  >
-                    <Activity
-                      className="h-4 w-4"
-                      style={{ color: asset.color }}
-                    />
-                  </div>
-                  <div className="text-left">
-                    <div
-                      className={cn(
-                        'text-sm font-semibold',
-                        isSelected ? 'text-gold' : 'text-foreground'
-                      )}
-                    >
-                      {asset.name}
-                    </div>
-                    <div className="text-xs text-muted-foreground font-mono">
-                      {asset.tokenSymbol}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
           </div>
         </div>
 
