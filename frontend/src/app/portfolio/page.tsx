@@ -5,6 +5,7 @@
  * View all holdings, PnL, and trade history
  */
 
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,7 @@ import { enrichAssetWithMetadata, type ApiAsset, type AssetMetadata, getAssetMet
 import type { Trade } from '@/types/api';
 import { usePosition } from '@/hooks/api/use-position';
 import { useLivePrice } from '@/hooks/api/use-prices';
+import { useFxRate } from '@/hooks/blockchain/use-fx-rate';
 import {
   formatAED,
   formatCommodityPrice,
@@ -64,6 +66,18 @@ export default function PortfolioPage() {
   });
 
   const assets = assetsData || [];
+  const { rate: fxRate } = useFxRate();
+
+  // Track per-asset values reported by HoldingRow components
+  const [holdingValues, setHoldingValues] = useState<Record<string, number>>({});
+  const handleValueUpdate = useCallback((assetId: string, usdValue: number) => {
+    setHoldingValues(prev => {
+      if (prev[assetId] === usdValue) return prev;
+      return { ...prev, [assetId]: usdValue };
+    });
+  }, []);
+
+  const totalPortfolioValue = Object.values(holdingValues).reduce((sum, v) => sum + v, 0);
 
   if (!authenticated) {
     return (
@@ -131,7 +145,11 @@ export default function PortfolioPage() {
             <Wallet className="h-4 w-4 text-gold" />
           </CardHeader>
           <CardContent>
-            <div className="number-display">&mdash;</div>
+            <div className="number-display">
+              {totalPortfolioValue > 0
+                ? `${totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DDSC`
+                : '\u2014'}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -142,7 +160,7 @@ export default function PortfolioPage() {
           <CardTitle className="text-xl font-display">Holdings</CardTitle>
         </CardHeader>
         <CardContent>
-          <HoldingsTable assets={assets} />
+          <HoldingsTable assets={assets} onValueUpdate={handleValueUpdate} fxRate={fxRate} />
         </CardContent>
       </Card>
 
@@ -219,7 +237,15 @@ export default function PortfolioPage() {
   );
 }
 
-function HoldingsTable({ assets }: { assets: AssetMetadata[] }) {
+function HoldingsTable({
+  assets,
+  onValueUpdate,
+  fxRate,
+}: {
+  assets: AssetMetadata[];
+  onValueUpdate: (assetId: string, usdValue: number) => void;
+  fxRate: number;
+}) {
   if (!assets || assets.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -230,25 +256,36 @@ function HoldingsTable({ assets }: { assets: AssetMetadata[] }) {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Asset</TableHead>
-          <TableHead className="text-right">Holdings</TableHead>
-          <TableHead className="text-right">Cost Basis (DDSC)</TableHead>
-          <TableHead className="text-right">Market Value (USD)</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {assets.map((asset) => (
-          <HoldingRow key={asset.assetId} asset={asset} />
-        ))}
-      </TableBody>
-    </Table>
+    <>
+      {/* Render all rows — ones without holdings are hidden but still report values */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Asset</TableHead>
+            <TableHead className="text-right">Holdings</TableHead>
+            <TableHead className="text-right">Cost Basis (DDSC)</TableHead>
+            <TableHead className="text-right">Market Value (DDSC)</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {assets.map((asset) => (
+            <HoldingRow key={asset.assetId} asset={asset} onValueUpdate={onValueUpdate} fxRate={fxRate} />
+          ))}
+        </TableBody>
+      </Table>
+    </>
   );
 }
 
-function HoldingRow({ asset }: { asset: AssetMetadata }) {
+function HoldingRow({
+  asset,
+  onValueUpdate,
+  fxRate,
+}: {
+  asset: AssetMetadata;
+  onValueUpdate: (assetId: string, ddscValue: number) => void;
+  fxRate: number;
+}) {
   const { data: position } = usePosition(asset.assetId, asset.tokenAddress || null);
   const { price: livePrice } = useLivePrice(asset.assetId);
 
@@ -256,30 +293,17 @@ function HoldingRow({ asset }: { asset: AssetMetadata }) {
   // median is already formatted as USD string e.g. "5073.23000000"
   const oraclePrice = livePrice?.median ? parseFloat(livePrice.median) : 0;
   const holdings = hasPosition ? parseFloat(formatUnits(BigInt(position.commodityBalance), 18)) : 0;
-  const currentValueUsd = holdings * oraclePrice;
+  // Convert USD value to DDSC (AED-pegged) using on-chain FX rate
+  const currentValueDdsc = holdings * oraclePrice * fxRate;
 
+  // Report value to parent for portfolio total
+  useEffect(() => {
+    onValueUpdate(asset.assetId, currentValueDdsc);
+  }, [asset.assetId, currentValueDdsc, onValueUpdate]);
+
+  // Only render rows for assets the user actually holds
   if (!hasPosition) {
-    return (
-      <TableRow>
-        <TableCell>
-          <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: `${asset.color}20` }}
-            >
-              <Activity className="h-4 w-4" style={{ color: asset.color }} />
-            </div>
-            <div>
-              <p className="font-medium">{asset.name}</p>
-              <p className="text-xs text-muted-foreground font-mono">{asset.tokenSymbol}</p>
-            </div>
-          </div>
-        </TableCell>
-        <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
-        <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
-        <TableCell className="text-right text-muted-foreground">&mdash;</TableCell>
-      </TableRow>
-    );
+    return null;
   }
 
   return (
@@ -305,7 +329,7 @@ function HoldingRow({ asset }: { asset: AssetMetadata }) {
         {formatAED(position.costBasis)}
       </TableCell>
       <TableCell className="text-right font-mono">
-        {oraclePrice > 0 ? `$${currentValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '\u2014'}
+        {oraclePrice > 0 ? `${currentValueDdsc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '\u2014'}
       </TableCell>
     </TableRow>
   );
