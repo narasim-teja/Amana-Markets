@@ -23,8 +23,11 @@ import {
   XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useBranding } from '@/components/branding-provider';
 
 export default function AdminOverviewPage() {
+  const { appName } = useBranding();
+
   // Fetch treasury stats
   const { data: treasuryStats, isLoading: treasuryLoading } = useQuery({
     queryKey: ['treasuryStats'],
@@ -93,7 +96,7 @@ export default function AdminOverviewPage() {
       <div>
         <h2 className="text-3xl font-display text-gold mb-2">Dashboard Overview</h2>
         <p className="text-muted-foreground">
-          Real-time monitoring and control center for Amanah
+          Real-time monitoring and control center for {appName}
         </p>
       </div>
 

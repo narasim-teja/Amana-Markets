@@ -1,17 +1,21 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, Shield, Activity } from 'lucide-react';
+import { useBranding } from '@/components/branding-provider';
 
 export default function HomePage() {
+  const { appName, logoUrl } = useBranding();
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center">
       <div className="text-center space-y-8 max-w-4xl">
         {/* Hero Section */}
         <div className="space-y-4">
-          <img src="/logo.png" alt="Amanah" className="w-20 h-20 mx-auto mb-4" />
+          <img src={logoUrl} alt={appName} className="w-20 h-20 mx-auto mb-4" />
           <h1 className="text-6xl md:text-7xl font-display text-gold mb-6">
-            Amanah
+            {appName}
           </h1>
           <p className="text-2xl md:text-3xl text-muted-foreground">
             Institutional-Grade Commodity Trading

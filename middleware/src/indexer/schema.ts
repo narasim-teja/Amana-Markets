@@ -116,5 +116,19 @@ export function initializeDatabase(db: Database) {
 
   db.run(`INSERT OR IGNORE INTO indexer_state (id, last_block) VALUES (1, 0)`);
 
+  // Branding / white-label settings (single-row config)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS branding (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      app_name TEXT NOT NULL DEFAULT 'Amanah',
+      logo_url TEXT NOT NULL DEFAULT '/logo.png',
+      primary_color TEXT NOT NULL DEFAULT '#C9A96E',
+      font_preset TEXT NOT NULL DEFAULT 'dm-sans',
+      updated_at INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  db.run(`INSERT OR IGNORE INTO branding (id) VALUES (1)`);
+
   console.log('✅ Database schema initialized');
 }

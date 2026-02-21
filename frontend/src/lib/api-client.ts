@@ -302,6 +302,37 @@ export const apiClient = {
     }>(response);
   },
 
+  // ==================== BRANDING ====================
+
+  async getBranding() {
+    const response = await fetch(`${API_BASE_URL}/branding`);
+    return handleResponse<{
+      appName: string;
+      logoUrl: string;
+      primaryColor: string;
+      fontPreset: string;
+    }>(response);
+  },
+
+  async updateBranding(config: {
+    appName?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+    fontPreset?: string;
+  }) {
+    const response = await fetch(`${API_BASE_URL}/branding`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    return handleResponse<{
+      appName: string;
+      logoUrl: string;
+      primaryColor: string;
+      fontPreset: string;
+    }>(response);
+  },
+
   // ==================== HEALTH ====================
 
   /**

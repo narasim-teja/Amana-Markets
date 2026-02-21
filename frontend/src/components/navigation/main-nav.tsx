@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useBranding } from '@/components/branding-provider';
 
 export function MainNav() {
   const pathname = usePathname();
@@ -37,6 +38,7 @@ export function MainNav() {
   const { isAdmin } = useIsAdmin();
   const { balance, isLoading: balanceLoading } = useAdiBalance();
   const { displayAddress } = useSmartAccount();
+  const { appName, logoUrl } = useBranding();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -61,6 +63,8 @@ export function MainNav() {
     window.open(`${explorerUrl}/address/${walletAddress}`, '_blank');
   };
 
+  const isAdminPage = pathname.startsWith('/admin');
+
   const navItems = [
     {
       href: '/trade',
@@ -80,53 +84,53 @@ export function MainNav() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="Amanah" className="w-9 h-9 rounded-lg" />
+            <img src={logoUrl} alt={appName} className="w-9 h-9 rounded-lg" />
             <h1 className="font-display text-xl font-semibold text-gold">
-              Amanah
+              {appName}
             </h1>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
+          {/* Desktop Navigation — hidden on admin pages (admin has its own sidebar) */}
+          {!isAdminPage && (
+            <div className="hidden md:flex items-center gap-6">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
 
-              return (
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
+                      isActive
+                        ? 'bg-gold/10 text-gold'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-dark-800'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+
+              {isAdmin && (
                 <Link
-                  key={item.href}
-                  href={item.href}
+                  href="/admin"
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
-                    isActive
-                      ? 'bg-gold/10 text-gold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-dark-800'
+                    'text-muted-foreground hover:text-foreground hover:bg-dark-800'
                   )}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span className="font-medium">{item.label}</span>
+                  <Shield className="h-4 w-4" />
+                  <span className="font-medium">Admin</span>
+                  <Badge variant="outline" className="text-xs">
+                    Owner
+                  </Badge>
                 </Link>
-              );
-            })}
-
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
-                  pathname.startsWith('/admin')
-                    ? 'bg-gold/10 text-gold'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-dark-800'
-                )}
-              >
-                <Shield className="h-4 w-4" />
-                <span className="font-medium">Admin</span>
-                <Badge variant="outline" className="text-xs">
-                  Owner
-                </Badge>
-              </Link>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Wallet Button */}
           <div className="flex items-center gap-3">
@@ -208,8 +212,8 @@ export function MainNav() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
+        {/* Mobile Menu — hidden on admin pages */}
+        {mobileMenuOpen && !isAdminPage && (
           <div className="md:hidden py-4 border-t border-dark-700">
             <div className="flex flex-col gap-2">
               {navItems.map((item) => {

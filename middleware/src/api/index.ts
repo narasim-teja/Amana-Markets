@@ -9,6 +9,7 @@ import analytics from './routes/analytics';
 import health from './routes/health';
 import config from './routes/config';
 import sponsor from './routes/sponsor';
+import branding from './routes/branding';
 
 const app = new Hono();
 
@@ -25,6 +26,7 @@ app.route('/analytics', analytics);
 app.route('/health', health);
 app.route('/config', config);
 app.route('/sponsor', sponsor);
+app.route('/branding', branding);
 
 // Bundler proxy — avoids CORS issues when frontend calls the bundler directly
 app.post('/bundler', async (c) => {
@@ -58,7 +60,8 @@ app.get('/', (c) => c.json({
     '/analytics',
     '/health',
     '/config',
-    '/sponsor'
+    '/sponsor',
+    '/branding'
   ]
 }));
 

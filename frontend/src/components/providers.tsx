@@ -15,6 +15,7 @@ import {
   STALE_TIME_DEFAULT,
 } from '@/lib/constants';
 import { initContracts } from '@/lib/contracts';
+import { BrandingProvider } from '@/components/branding-provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create QueryClient with optimized defaults
@@ -64,7 +65,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }}
     >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrandingProvider>{children}</BrandingProvider>
+      </QueryClientProvider>
     </PrivyProvider>
   );
 }

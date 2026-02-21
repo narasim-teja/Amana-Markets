@@ -18,7 +18,9 @@ import {
   Landmark,
   LogOut,
   Fuel,
+  Palette,
 } from 'lucide-react';
+import { useBranding } from '@/components/branding-provider';
 
 export default function AdminLayout({
   children,
@@ -28,6 +30,7 @@ export default function AdminLayout({
   const router = useRouter();
   const { ready, authenticated, logout } = usePrivy();
   const { isAdmin, isLoading, walletAddress, owner } = useIsAdmin();
+  const { appName, logoUrl } = useBranding();
 
   useEffect(() => {
     if (ready && !authenticated) {
@@ -84,9 +87,9 @@ export default function AdminLayout({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-3">
-                <img src="/logo.png" alt="Amanah" className="w-7 h-7 rounded" />
+                <img src={logoUrl} alt={appName} className="w-7 h-7 rounded" />
                 <h1 className="text-xl font-display text-gold">
-                  Amanah Admin
+                  {appName} Admin
                 </h1>
               </div>
             </div>
@@ -130,6 +133,9 @@ export default function AdminLayout({
             </NavLink>
             <NavLink href="/admin/sponsorship" icon={Fuel}>
               Gas Sponsorship
+            </NavLink>
+            <NavLink href="/admin/branding" icon={Palette}>
+              Branding
             </NavLink>
 
             <div className="pt-4 mt-4 border-t border-dark-700">
