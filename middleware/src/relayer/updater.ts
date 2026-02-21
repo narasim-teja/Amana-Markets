@@ -9,6 +9,7 @@ const ADAPTER_MAP: Record<string, any> = {
   'DIA': CONTRACTS.DIAAdapter,
   'RedStone': CONTRACTS.RedStoneAdapter,
   'Yahoo': CONTRACTS.ManualAdapter,
+  'CSV': CONTRACTS.ManualAdapter,
 };
 
 export async function updatePriceOnChain(priceData: PriceData): Promise<void> {

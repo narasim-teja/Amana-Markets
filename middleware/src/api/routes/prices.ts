@@ -7,6 +7,7 @@ import { formatPrice } from '../../lib/utils';
 import { getAssetById } from '../../config/assets';
 import type { AssetCategory } from '../../config/assets';
 import { ORACLE_APIS } from '../../config/oracles';
+import { getCSVHistory } from '../../services/csvPrices';
 
 const app = new Hono();
 
@@ -373,6 +374,24 @@ app.get('/:assetId/history', async (c) => {
       const prices = await fetchYahooChartHistory(asset.yahooSymbol, range, asset.yahooCurrencyDivisor);
       if (prices && prices.length > 0) {
         return c.json({ assetId, range, interval: range, source: 'Yahoo', prices });
+      }
+    }
+
+    // Strategy 3: CSV historical data (ADX stocks)
+    if (asset.csvFile) {
+      const csvData = getCSVHistory(asset.symbol);
+      if (csvData.length > 0) {
+        const now = Math.floor(Date.now() / 1000);
+        const rangeSeconds: Record<string, number> = {
+          '1h': 3600, '24h': 86400, '7d': 604800, '30d': 2592000, '1y': 31536000,
+        };
+        const cutoff = now - (rangeSeconds[range] || 31536000);
+        const filtered = csvData.filter(d => d.time >= cutoff);
+        const prices = (filtered.length > 0 ? filtered : csvData).map(d => ({
+          time: d.time,
+          price: d.price,
+        }));
+        return c.json({ assetId, range, interval: '1D', source: 'CSV', prices });
       }
     }
 

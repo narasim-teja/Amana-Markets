@@ -3,7 +3,7 @@ import { keccak256, toHex } from 'viem';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type AssetCategory = 'commodity' | 'stock' | 'etf' | 'fx';
-export type AssetSource = 'pyth' | 'dia' | 'redstone' | 'yahoo';
+export type AssetSource = 'pyth' | 'dia' | 'redstone' | 'yahoo' | 'csv';
 
 export interface Asset {
   id: `0x${string}`;
@@ -20,6 +20,7 @@ export interface Asset {
   redstoneSymbol?: string;
   yahooSymbol?: string;
   yahooCurrencyDivisor?: number; // 100 for USX→USD
+  csvFile?: string;              // CSV filename in historical-data/ (ADX stocks)
   tokenAddress?: `0x${string}`;
 }
 
@@ -134,6 +135,17 @@ export const ASSET_IDS = {
   UBER: assetId('UBER'),
   SQ: assetId('SQ'),
   COIN: assetId('COIN'),
+  // CSV ADX Equities (Abu Dhabi Securities Exchange)
+  FAB: assetId('FAB'),
+  ALDAR: assetId('ALDAR'),
+  ADIB: assetId('ADIB'),
+  ALPHADHABI: assetId('ALPHADHABI'),
+  IHC: assetId('IHC'),
+  EIC: assetId('EIC'),
+  TPZERO: assetId('TPZERO'),
+  UNIONINS: assetId('UNIONINS'),
+  ESHRAQ: assetId('ESHRAQ'),
+  SUDATEL: assetId('SUDATEL'),
   // DIA Fiat/FX
   EUR: assetId('EUR'),
   GBP: assetId('GBP'),
@@ -701,6 +713,60 @@ export const ASSETS: Asset[] = [
     id: ASSET_IDS.CMCSA, symbol: 'CMCSA', name: 'Comcast', tokenSymbol: 'xCMCSA',
     category: 'stock', decimals: 18,
     sources: ['dia'], diaCategory: 'Equities', diaTicker: 'CMCSA',
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CSV ADX EQUITIES (10) — Abu Dhabi Securities Exchange (historical CSV data)
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    id: ASSET_IDS.FAB, symbol: 'FAB', name: 'First Abu Dhabi Bank', tokenSymbol: 'xFAB',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'First Abu Dhabi Bank Stock Price History.csv',
+  },
+  {
+    id: ASSET_IDS.ALDAR, symbol: 'ALDAR', name: 'Aldar Properties', tokenSymbol: 'xALDAR',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'Aldar Properties Stock Price History.csv',
+  },
+  {
+    id: ASSET_IDS.ADIB, symbol: 'ADIB', name: 'Abu Dhabi Islamic Bank', tokenSymbol: 'xADIB',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'Abu Dhabi Islamic Bank PJSC Stock Price History.csv',
+  },
+  {
+    id: ASSET_IDS.ALPHADHABI, symbol: 'ALPHADHABI', name: 'Alpha Dhabi Holding', tokenSymbol: 'xALPHADHABI',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'Alpha Dhabi Holding PJSC Stock Price History.csv',
+  },
+  {
+    id: ASSET_IDS.IHC, symbol: 'IHC', name: 'International Holding Company', tokenSymbol: 'xIHC',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'International Holding Company Stock Price History.csv',
+  },
+  {
+    id: ASSET_IDS.EIC, symbol: 'EIC', name: 'Emirates Insurance Company', tokenSymbol: 'xEIC',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'Emirates Ins C Stock Price History.csv',
+  },
+  {
+    id: ASSET_IDS.TPZERO, symbol: 'TPZERO', name: 'Two Point Zero', tokenSymbol: 'xTPZERO',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'Two Point Zero PJSC Stock Price History.csv',
+  },
+  {
+    id: ASSET_IDS.UNIONINS, symbol: 'UNIONINS', name: 'Union Insurance', tokenSymbol: 'xUNIONINS',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'Union Insurance Stock Price History.csv',
+  },
+  {
+    id: ASSET_IDS.ESHRAQ, symbol: 'ESHRAQ', name: 'Eshraq Investments', tokenSymbol: 'xESHRAQ',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'Eshraq Investments PJSC Stock Price History.csv',
+  },
+  {
+    id: ASSET_IDS.SUDATEL, symbol: 'SUDATEL', name: 'Sudatel Telecom Group', tokenSymbol: 'xSUDATEL',
+    category: 'stock', decimals: 18,
+    sources: ['csv'], csvFile: 'Sudatel Telecom Group Stock Price History.csv',
   },
 
   // ═══════════════════════════════════════════════════════════════════════════

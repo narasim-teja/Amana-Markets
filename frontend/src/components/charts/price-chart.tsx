@@ -10,13 +10,14 @@ import {
   UTCTimestamp,
 } from 'lightweight-charts';
 
-type TimeRange = '1h' | '24h' | '7d' | '30d';
+type TimeRange = '1h' | '24h' | '7d' | '30d' | '1y';
 
 const RANGE_SECONDS: Record<TimeRange, number> = {
   '1h': 3600,
   '24h': 86400,
   '7d': 604800,
   '30d': 2592000,
+  '1y': 31536000,
 };
 
 interface PriceChartProps {

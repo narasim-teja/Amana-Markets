@@ -64,7 +64,8 @@ interface AssetOracleData {
 const CATEGORY_OPTIONS = [
   { value: 'all', label: 'All Categories' },
   { value: 'commodity', label: 'Commodities' },
-  { value: 'stock', label: 'Stocks' },
+  { value: 'adx_stock', label: 'AD Equities' },
+  { value: 'stock', label: 'US Equities' },
   { value: 'etf', label: 'ETFs' },
   { value: 'fx', label: 'FX' },
 ];
@@ -86,6 +87,7 @@ const STATUS_OPTIONS = [
 
 const CATEGORY_COLORS: Record<string, string> = {
   commodity: 'border-amber-500/30 text-amber-400',
+  adx_stock: 'border-teal-500/30 text-teal-400',
   stock: 'border-blue-500/30 text-blue-400',
   etf: 'border-purple-500/30 text-purple-400',
   fx: 'border-emerald-500/30 text-emerald-400',
@@ -96,6 +98,7 @@ const SOURCE_COLORS: Record<string, string> = {
   DIA: 'border-cyan-500/30 text-cyan-400',
   RedStone: 'border-red-500/30 text-red-400',
   Yahoo: 'border-yellow-500/30 text-yellow-400',
+  CSV: 'border-teal-500/30 text-teal-400',
 };
 
 export default function OracleStatusPage() {

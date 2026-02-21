@@ -62,7 +62,8 @@ const FEATURED_SYMBOLS = ['XAU', 'XAG', 'WTI'];
 const CATEGORY_TABS: { value: AssetCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'commodity', label: 'Commodities' },
-  { value: 'stock', label: 'Equities' },
+  { value: 'adx_stock', label: 'AD Equities' },
+  { value: 'stock', label: 'US Equities' },
   { value: 'etf', label: 'ETFs' },
   { value: 'fx', label: 'FX' },
 ];

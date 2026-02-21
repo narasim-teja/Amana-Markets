@@ -7,9 +7,10 @@ const TIMEFRAMES = [
   { label: '24H', value: '24h' },
   { label: '7D', value: '7d' },
   { label: '30D', value: '30d' },
+  { label: '1Y', value: '1y' },
 ] as const;
 
-export type TimeRange = '1h' | '24h' | '7d' | '30d';
+export type TimeRange = '1h' | '24h' | '7d' | '30d' | '1y';
 
 interface TimeframeSelectorProps {
   selected: TimeRange;

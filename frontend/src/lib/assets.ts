@@ -2,7 +2,7 @@ import { keccak256, toHex } from 'viem';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type AssetCategory = 'commodity' | 'stock' | 'etf' | 'fx';
+export type AssetCategory = 'commodity' | 'stock' | 'adx_stock' | 'etf' | 'fx';
 
 /**
  * API Asset Response
@@ -153,6 +153,17 @@ export const ASSET_IDS = {
   T: assetId('T'),
   VZ: assetId('VZ'),
   CMCSA: assetId('CMCSA'),
+  // CSV ADX Equities (Abu Dhabi Securities Exchange)
+  FAB: assetId('FAB'),
+  ALDAR: assetId('ALDAR'),
+  ADIB: assetId('ADIB'),
+  ALPHADHABI: assetId('ALPHADHABI'),
+  IHC: assetId('IHC'),
+  EIC: assetId('EIC'),
+  TPZERO: assetId('TPZERO'),
+  UNIONINS: assetId('UNIONINS'),
+  ESHRAQ: assetId('ESHRAQ'),
+  SUDATEL: assetId('SUDATEL'),
   // DIA Fiat/FX
   EUR: assetId('EUR'),
   GBP: assetId('GBP'),
@@ -198,6 +209,13 @@ function fx(
   color: string,
 ): AssetMetadata {
   return { assetId: id, symbol, name, tokenSymbol, icon: '/commodities/default.svg', color, description: `${name}/USD`, category: 'fx', decimals: 18 };
+}
+
+function adxStock(
+  id: string, symbol: string, name: string, tokenSymbol: string,
+  color: string,
+): AssetMetadata {
+  return { assetId: id, symbol, name, tokenSymbol, icon: '/commodities/default.svg', color, description: `${name} (ADX)`, category: 'adx_stock', decimals: 18 };
 }
 
 export const ASSET_METADATA: Record<string, AssetMetadata> = {
@@ -321,6 +339,18 @@ export const ASSET_METADATA: Record<string, AssetMetadata> = {
   [ASSET_IDS.T]:     stock(ASSET_IDS.T, 'T', 'AT&T', 'xT', '#009FDB'),
   [ASSET_IDS.VZ]:    stock(ASSET_IDS.VZ, 'VZ', 'Verizon', 'xVZ', '#CD040B'),
   [ASSET_IDS.CMCSA]: stock(ASSET_IDS.CMCSA, 'CMCSA', 'Comcast', 'xCMCSA', '#0089CF'),
+
+  // ═══ ADX Equities — Abu Dhabi Securities Exchange ═══
+  [ASSET_IDS.FAB]:        adxStock(ASSET_IDS.FAB, 'FAB', 'First Abu Dhabi Bank', 'xFAB', '#0A5F38'),
+  [ASSET_IDS.ALDAR]:      adxStock(ASSET_IDS.ALDAR, 'ALDAR', 'Aldar Properties', 'xALDAR', '#C62828'),
+  [ASSET_IDS.ADIB]:       adxStock(ASSET_IDS.ADIB, 'ADIB', 'Abu Dhabi Islamic Bank', 'xADIB', '#2E7D32'),
+  [ASSET_IDS.ALPHADHABI]: adxStock(ASSET_IDS.ALPHADHABI, 'ALPHADHABI', 'Alpha Dhabi Holding', 'xALPHADHABI', '#1565C0'),
+  [ASSET_IDS.IHC]:        adxStock(ASSET_IDS.IHC, 'IHC', 'International Holding Co', 'xIHC', '#B8860B'),
+  [ASSET_IDS.EIC]:        adxStock(ASSET_IDS.EIC, 'EIC', 'Emirates Insurance', 'xEIC', '#00838F'),
+  [ASSET_IDS.TPZERO]:     adxStock(ASSET_IDS.TPZERO, 'TPZERO', 'Two Point Zero', 'xTPZERO', '#6A1B9A'),
+  [ASSET_IDS.UNIONINS]:   adxStock(ASSET_IDS.UNIONINS, 'UNIONINS', 'Union Insurance', 'xUNIONINS', '#4E342E'),
+  [ASSET_IDS.ESHRAQ]:     adxStock(ASSET_IDS.ESHRAQ, 'ESHRAQ', 'Eshraq Investments', 'xESHRAQ', '#E65100'),
+  [ASSET_IDS.SUDATEL]:    adxStock(ASSET_IDS.SUDATEL, 'SUDATEL', 'Sudatel Telecom', 'xSUDATEL', '#283593'),
 
   // ═══ DIA Fiat / FX ═══
   [ASSET_IDS.EUR]: fx(ASSET_IDS.EUR, 'EUR', 'Euro', 'xEUR', '#003399'),

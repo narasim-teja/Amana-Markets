@@ -2,6 +2,7 @@ import { fetchPythPrices } from '../relayer/fetchers/pyth';
 import { fetchDIAPrices } from '../relayer/fetchers/dia';
 import { fetchRedStonePrices } from '../relayer/fetchers/redstone';
 import { fetchYahooPrices } from '../relayer/fetchers/yahoo';
+import { fetchCSVPrices } from '../relayer/fetchers/csv';
 import { ASSETS } from '../config/assets';
 import type { AssetCategory } from '../config/assets';
 import type { PriceData } from '../lib/types';
@@ -25,6 +26,7 @@ export interface LivePriceData {
     dia?: SourcePrice;
     redstone?: SourcePrice;
     yahoo?: SourcePrice;
+    csv?: SourcePrice;
   };
   median: string;
   lastUpdated: number;
@@ -91,7 +93,7 @@ function formatLivePrices(
     const validPrices: bigint[] = [];
 
     for (const priceData of assetPrices) {
-      const sourceKey = priceData.source.toLowerCase() as 'pyth' | 'dia' | 'redstone' | 'yahoo';
+      const sourceKey = priceData.source.toLowerCase() as 'pyth' | 'dia' | 'redstone' | 'yahoo' | 'csv';
       const isStale = isPriceStale(priceData.timestamp);
 
       sources[sourceKey] = {
@@ -144,12 +146,13 @@ export async function getLivePrices(
     withTimeout(fetchDIAPrices(), 8000),
     withTimeout(fetchRedStonePrices(), 8000),
     withTimeout(fetchYahooPrices(), 8000),
+    withTimeout(fetchCSVPrices(), 8000),
   ]);
 
   const allPrices: PriceData[] = [];
 
   results.forEach((result, index) => {
-    const sourceName = ['Pyth', 'DIA', 'RedStone', 'Yahoo'][index];
+    const sourceName = ['Pyth', 'DIA', 'RedStone', 'Yahoo', 'CSV'][index];
     if (result.status === 'fulfilled') {
       allPrices.push(...result.value);
     } else {
@@ -191,6 +194,7 @@ export interface SourceHealthStatus {
   dia: { isHealthy: boolean; lastSuccessTimestamp: number };
   redstone: { isHealthy: boolean; lastSuccessTimestamp: number };
   yahoo: { isHealthy: boolean; lastSuccessTimestamp: number };
+  csv: { isHealthy: boolean; lastSuccessTimestamp: number };
   healthyCount: number;
 }
 
@@ -199,7 +203,8 @@ export async function getSourceStatuses(): Promise<SourceHealthStatus> {
     fetchPythPrices(),
     fetchDIAPrices(),
     fetchRedStonePrices(),
-    fetchYahooPrices()
+    fetchYahooPrices(),
+    fetchCSVPrices()
   ]);
 
   const statuses: SourceHealthStatus = {
@@ -207,19 +212,20 @@ export async function getSourceStatuses(): Promise<SourceHealthStatus> {
     dia: { isHealthy: results[1].status === 'fulfilled' && results[1].value.length > 0, lastSuccessTimestamp: 0 },
     redstone: { isHealthy: results[2].status === 'fulfilled' && results[2].value.length > 0, lastSuccessTimestamp: 0 },
     yahoo: { isHealthy: results[3].status === 'fulfilled' && results[3].value.length > 0, lastSuccessTimestamp: 0 },
+    csv: { isHealthy: results[4].status === 'fulfilled' && results[4].value.length > 0, lastSuccessTimestamp: 0 },
     healthyCount: 0
   };
 
   for (const prices of cache.data.values()) {
     for (const price of prices) {
-      const key = price.source.toLowerCase() as 'pyth' | 'dia' | 'redstone' | 'yahoo';
+      const key = price.source.toLowerCase() as 'pyth' | 'dia' | 'redstone' | 'yahoo' | 'csv';
       if (statuses[key] && price.timestamp > statuses[key].lastSuccessTimestamp) {
         statuses[key].lastSuccessTimestamp = price.timestamp;
       }
     }
   }
 
-  statuses.healthyCount = [statuses.pyth, statuses.dia, statuses.redstone, statuses.yahoo]
+  statuses.healthyCount = [statuses.pyth, statuses.dia, statuses.redstone, statuses.yahoo, statuses.csv]
     .filter(s => s.isHealthy).length;
 
   return statuses;
