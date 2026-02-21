@@ -11,7 +11,7 @@ interface DIAResponse {
 }
 
 const CONCURRENCY = 10; // Parallel requests
-const PER_REQUEST_TIMEOUT = 3000; // 3s per request
+const PER_REQUEST_TIMEOUT = 5000; // 5s per request (matches Yahoo)
 
 export async function fetchDIAPrices(): Promise<PriceData[]> {
   const diaAssets = ASSETS.filter(a => a.diaCategory && a.diaTicker);
@@ -51,14 +51,19 @@ export async function fetchDIAPrices(): Promise<PriceData[]> {
       })
     );
 
-    for (const result of results) {
+    results.forEach((result, j) => {
       if (result.status === 'fulfilled') {
         prices.push(result.value);
         successCount++;
       } else {
         failCount++;
+        const failed = batch[j];
+        console.warn(
+          `⚠️  DIA ${failed?.symbol} (${failed?.diaCategory}/${failed?.diaTicker}) failed:`,
+          result.reason?.message || result.reason
+        );
       }
-    }
+    });
   }
 
   console.log(`📊 DIA: ${successCount} success, ${failCount} failed out of ${diaAssets.length} assets`);

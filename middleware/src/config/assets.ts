@@ -221,12 +221,14 @@ export const ASSETS: Asset[] = [
     category: 'commodity', decimals: 18,
     sources: ['redstone'],
     redstoneSymbol: 'CORN',
+    yahooSymbol: 'ZC=F', yahooCurrencyDivisor: 100,
   },
   {
     id: ASSET_IDS.SOYBEAN, symbol: 'SOYBEAN', name: 'Soybeans', tokenSymbol: 'xSOYBEAN',
     category: 'commodity', decimals: 18,
     sources: ['redstone'],
     redstoneSymbol: 'SOYBEAN',
+    yahooSymbol: 'ZS=F', yahooCurrencyDivisor: 100,
   },
   {
     id: ASSET_IDS.URANIUM, symbol: 'URANIUM', name: 'Uranium', tokenSymbol: 'xURANIUM',
@@ -310,21 +312,25 @@ export const ASSETS: Asset[] = [
     id: ASSET_IDS.VGSH, symbol: 'VGSH', name: 'Vanguard Short-Term Treasury ETF', tokenSymbol: 'xVGSH',
     category: 'etf', decimals: 18,
     sources: ['dia'], diaCategory: 'ETF', diaTicker: 'VGSH',
+    yahooSymbol: 'VGSH',
   },
   {
     id: ASSET_IDS.GOVT, symbol: 'GOVT', name: 'iShares U.S. Treasury Bond ETF', tokenSymbol: 'xGOVT',
     category: 'etf', decimals: 18,
     sources: ['dia'], diaCategory: 'ETF', diaTicker: 'GOVT',
+    yahooSymbol: 'GOVT',
   },
   {
     id: ASSET_IDS.BETH, symbol: 'BETH', name: 'ProShares Bitcoin & Ether ETF', tokenSymbol: 'xBETH',
     category: 'etf', decimals: 18,
     sources: ['dia'], diaCategory: 'ETF', diaTicker: 'BETH',
+    yahooSymbol: 'BETH',
   },
   {
     id: ASSET_IDS.ETHA, symbol: 'ETHA', name: 'iShares Ethereum Trust ETF', tokenSymbol: 'xETHA',
     category: 'etf', decimals: 18,
     sources: ['dia'], diaCategory: 'ETF', diaTicker: 'ETHA',
+    yahooSymbol: 'ETHA',
   },
   {
     id: ASSET_IDS.BITO, symbol: 'BITO', name: 'ProShares Bitcoin Strategy ETF', tokenSymbol: 'xBITO',
@@ -340,16 +346,19 @@ export const ASSETS: Asset[] = [
     id: ASSET_IDS.HODL, symbol: 'HODL', name: 'VanEck Bitcoin ETF', tokenSymbol: 'xHODL',
     category: 'etf', decimals: 18,
     sources: ['dia'], diaCategory: 'ETF', diaTicker: 'HODL',
+    yahooSymbol: 'HODL',
   },
   {
     id: ASSET_IDS.ARKB, symbol: 'ARKB', name: 'ARK 21Shares Bitcoin ETF', tokenSymbol: 'xARKB',
     category: 'etf', decimals: 18,
     sources: ['dia'], diaCategory: 'ETF', diaTicker: 'ARKB',
+    yahooSymbol: 'ARKB',
   },
   {
     id: ASSET_IDS.FBTC, symbol: 'FBTC', name: 'Fidelity Wise Origin Bitcoin Fund', tokenSymbol: 'xFBTC',
     category: 'etf', decimals: 18,
     sources: ['dia'], diaCategory: 'ETF', diaTicker: 'FBTC',
+    yahooSymbol: 'FBTC',
   },
   {
     id: ASSET_IDS.IBIT, symbol: 'IBIT', name: 'iShares Bitcoin Trust', tokenSymbol: 'xIBIT',
@@ -735,32 +744,38 @@ export const ASSETS: Asset[] = [
   {
     id: ASSET_IDS.NZD, symbol: 'NZD', name: 'New Zealand Dollar', tokenSymbol: 'xNZD',
     category: 'fx', decimals: 18,
-    sources: ['dia'], diaCategory: 'Fiat', diaTicker: 'NZD-USD',
+    sources: ['yahoo'],
+    yahooSymbol: 'NZDUSD=X',
   },
   {
     id: ASSET_IDS.SEK, symbol: 'SEK', name: 'Swedish Krona', tokenSymbol: 'xSEK',
     category: 'fx', decimals: 18,
-    sources: ['dia'], diaCategory: 'Fiat', diaTicker: 'SEK-USD',
+    sources: ['yahoo'],
+    yahooSymbol: 'SEKUSD=X',
   },
   {
     id: ASSET_IDS.NOK, symbol: 'NOK', name: 'Norwegian Krone', tokenSymbol: 'xNOK',
     category: 'fx', decimals: 18,
-    sources: ['dia'], diaCategory: 'Fiat', diaTicker: 'NOK-USD',
+    sources: ['yahoo'],
+    yahooSymbol: 'NOKUSD=X',
   },
   {
     id: ASSET_IDS.SGD, symbol: 'SGD', name: 'Singapore Dollar', tokenSymbol: 'xSGD',
     category: 'fx', decimals: 18,
-    sources: ['dia'], diaCategory: 'Fiat', diaTicker: 'SGD-USD',
+    sources: ['yahoo'],
+    yahooSymbol: 'SGDUSD=X',
   },
   {
     id: ASSET_IDS.HKD, symbol: 'HKD', name: 'Hong Kong Dollar', tokenSymbol: 'xHKD',
     category: 'fx', decimals: 18,
-    sources: ['dia'], diaCategory: 'Fiat', diaTicker: 'HKD-USD',
+    sources: ['yahoo'],
+    yahooSymbol: 'HKDUSD=X',
   },
   {
     id: ASSET_IDS.KRW, symbol: 'KRW', name: 'South Korean Won', tokenSymbol: 'xKRW',
     category: 'fx', decimals: 18,
-    sources: ['dia'], diaCategory: 'Fiat', diaTicker: 'KRW-USD',
+    sources: ['yahoo'],
+    yahooSymbol: 'KRWUSD=X',
   },
 ];
 

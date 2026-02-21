@@ -6,6 +6,7 @@ import { getLivePrices } from '../../services/livePrices';
 import { formatPrice } from '../../lib/utils';
 import { getAssetById } from '../../config/assets';
 import type { AssetCategory } from '../../config/assets';
+import { ORACLE_APIS } from '../../config/oracles';
 
 const app = new Hono();
 
@@ -230,6 +231,13 @@ const PYTH_TV_SYMBOLS: Record<string, string> = {
   GBTC: 'Equity.US.GBTC/USD',
   IBIT: 'Equity.US.IBIT/USD',
   BITO: 'Equity.US.BITO/USD',
+  VGSH: 'Equity.US.VGSH/USD',
+  GOVT: 'Equity.US.GOVT/USD',
+  BETH: 'Equity.US.BETH/USD',
+  ETHA: 'Equity.US.ETHA/USD',
+  HODL: 'Equity.US.HODL/USD',
+  ARKB: 'Equity.US.ARKB/USD',
+  FBTC: 'Equity.US.FBTC/USD',
   // FX
   EUR: 'FX.EUR/USD',
   GBP: 'FX.GBP/USD',
@@ -246,7 +254,74 @@ const PYTH_TV_SYMBOLS: Record<string, string> = {
   KRW: 'FX.KRW/USD',
 };
 
-// GET /prices/:assetId/history - Historical price data from Pyth Benchmarks API
+// Yahoo Finance chart range/interval mapping
+const YAHOO_CHART_CONFIG: Record<string, { range: string; interval: string; filterLast?: number }> = {
+  '1h':  { range: '1d', interval: '5m', filterLast: 24 },
+  '24h': { range: '1d', interval: '5m' },
+  '7d':  { range: '5d', interval: '30m' },
+  '30d': { range: '1mo', interval: '1h' },
+};
+
+interface YahooChartHistoryResponse {
+  chart: {
+    result: Array<{
+      timestamp: number[];
+      indicators: {
+        quote: Array<{
+          close: (number | null)[];
+        }>;
+      };
+    }>;
+    error: null | { code: string; description: string };
+  };
+}
+
+async function fetchYahooChartHistory(
+  yahooSymbol: string,
+  range: string,
+  yahooCurrencyDivisor?: number
+): Promise<Array<{ time: number; price: number }> | null> {
+  const config = YAHOO_CHART_CONFIG[range] ?? YAHOO_CHART_CONFIG['24h']!;
+  const url = `${ORACLE_APIS.YAHOO_FINANCE}/${encodeURIComponent(yahooSymbol)}?range=${config.range}&interval=${config.interval}`;
+
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+    },
+    signal: AbortSignal.timeout(5000),
+  });
+
+  if (!response.ok) return null;
+
+  const data = await response.json() as YahooChartHistoryResponse;
+  if (data.chart.error || !data.chart.result?.[0]) return null;
+
+  const result = data.chart.result[0];
+  const timestamps = result.timestamp;
+  const closes = result.indicators.quote[0]?.close;
+
+  if (!timestamps || !closes) return null;
+
+  let prices: Array<{ time: number; price: number }> = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const closePrice = closes[i];
+    if (closePrice != null && closePrice > 0) {
+      let price = closePrice;
+      if (yahooCurrencyDivisor) {
+        price = price / yahooCurrencyDivisor;
+      }
+      prices.push({ time: timestamps[i]!, price });
+    }
+  }
+
+  if (config.filterLast && prices.length > config.filterLast) {
+    prices = prices.slice(-config.filterLast);
+  }
+
+  return prices;
+}
+
+// GET /prices/:assetId/history - Historical price data (Pyth primary, Yahoo fallback)
 app.get('/:assetId/history', async (c) => {
   try {
     const assetId = c.req.param('assetId') as `0x${string}`;
@@ -257,51 +332,52 @@ app.get('/:assetId/history', async (c) => {
       return c.json({ error: 'Asset not found' }, 404);
     }
 
+    // Strategy 1: Try Pyth Benchmarks (primary source for most assets)
     const pythSymbol = PYTH_TV_SYMBOLS[asset.symbol];
-    if (!pythSymbol) {
-      return c.json({ error: 'No chart data available for this asset' }, 404);
+    if (pythSymbol) {
+      // Pyth Benchmarks data can be delayed (market hours only), so for short
+      // ranges we fetch a wider window and slice to the last N points.
+      const rangeConfig: Record<string, { resolution: string; seconds: number; lastN?: number }> = {
+        '1h':  { resolution: '1',   seconds: 86400, lastN: 60 },
+        '24h': { resolution: '5',   seconds: 86400 },
+        '7d':  { resolution: '30',  seconds: 604800 },
+        '30d': { resolution: '120', seconds: 2592000 },
+      };
+
+      const config = rangeConfig[range] ?? rangeConfig['24h']!;
+      const now = Math.floor(Date.now() / 1000);
+      const from = now - config.seconds;
+
+      const url = `https://benchmarks.pyth.network/v1/shims/tradingview/history?symbol=${encodeURIComponent(pythSymbol)}&resolution=${config.resolution}&from=${from}&to=${now}`;
+      const response = await fetch(url);
+
+      if (response.ok) {
+        const data = await response.json() as {
+          s: string; t: number[]; o: number[]; h: number[]; l: number[]; c: number[]; v: number[];
+        };
+
+        if (data.s === 'ok' && data.t && data.t.length > 0) {
+          let prices = data.t.map((time, i) => ({ time, price: data.c[i] }));
+          // For short ranges, slice to the last N points
+          if (config.lastN && prices.length > config.lastN) {
+            prices = prices.slice(-config.lastN);
+          }
+          return c.json({ assetId, range, interval: config.resolution, source: 'Pyth', prices });
+        }
+      }
+      // If Pyth fails or returns no data, fall through to Yahoo
     }
 
-    // Map range to Pyth TradingView resolution and time window
-    const rangeConfig: Record<string, { resolution: string; seconds: number }> = {
-      '1h':  { resolution: '1',   seconds: 3600 },
-      '24h': { resolution: '5',   seconds: 86400 },
-      '7d':  { resolution: '30',  seconds: 604800 },
-      '30d': { resolution: '120', seconds: 2592000 },
-    };
-
-    const config = rangeConfig[range] ?? rangeConfig['24h']!;
-    const now = Math.floor(Date.now() / 1000);
-    const from = now - config.seconds;
-
-    const url = `https://benchmarks.pyth.network/v1/shims/tradingview/history?symbol=${encodeURIComponent(pythSymbol)}&resolution=${config.resolution}&from=${from}&to=${now}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`Pyth API returned ${response.status}`);
+    // Strategy 2: Fall back to Yahoo Finance chart API
+    if (asset.yahooSymbol) {
+      const prices = await fetchYahooChartHistory(asset.yahooSymbol, range, asset.yahooCurrencyDivisor);
+      if (prices && prices.length > 0) {
+        return c.json({ assetId, range, interval: range, source: 'Yahoo', prices });
+      }
     }
 
-    const data = await response.json() as {
-      s: string;
-      t: number[];
-      o: number[];
-      h: number[];
-      l: number[];
-      c: number[];
-      v: number[];
-    };
-
-    if (data.s !== 'ok' || !data.t || data.t.length === 0) {
-      return c.json({ assetId, range, interval: config!.resolution, source: 'Pyth', prices: [] });
-    }
-
-    // Use close prices for the chart
-    const prices = data.t.map((time, i) => ({
-      time,
-      price: data.c[i],
-    }));
-
-    return c.json({ assetId, range, interval: config!.resolution, source: 'Pyth', prices });
+    // No chart data available from any source
+    return c.json({ assetId, range, interval: range, source: 'none', prices: [] });
   } catch (error) {
     console.error('Error fetching price history:', error);
     return c.json({ error: 'Failed to fetch price history' }, 500);
