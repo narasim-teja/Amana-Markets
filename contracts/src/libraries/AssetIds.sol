@@ -109,6 +109,18 @@ library AssetIds {
     bytes32 public constant VZ = keccak256("VZ/USD");
     bytes32 public constant CMCSA = keccak256("CMCSA/USD");
 
+    // ═══ CSV ADX Equities (Abu Dhabi Securities Exchange) ═══
+    bytes32 public constant FAB = keccak256("FAB/USD");
+    bytes32 public constant ALDAR = keccak256("ALDAR/USD");
+    bytes32 public constant ADIB = keccak256("ADIB/USD");
+    bytes32 public constant ALPHADHABI = keccak256("ALPHADHABI/USD");
+    bytes32 public constant IHC = keccak256("IHC/USD");
+    bytes32 public constant EIC = keccak256("EIC/USD");
+    bytes32 public constant TPZERO = keccak256("TPZERO/USD");
+    bytes32 public constant UNIONINS = keccak256("UNIONINS/USD");
+    bytes32 public constant ESHRAQ = keccak256("ESHRAQ/USD");
+    bytes32 public constant SUDATEL = keccak256("SUDATEL/USD");
+
     // ═══ DIA Fiat / FX ═══
     bytes32 public constant EUR = keccak256("EUR/USD");
     bytes32 public constant GBP = keccak256("GBP/USD");

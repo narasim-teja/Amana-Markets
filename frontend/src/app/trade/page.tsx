@@ -175,7 +175,7 @@ export default function TradePage() {
     isLoading: chartLoading,
     range,
     setRange,
-  } = usePriceChart(selectedAssetId);
+  } = usePriceChart(selectedAssetId, selectedAsset?.category === 'adx_stock' ? '1y' : '24h');
   const [hoveredPrice, setHoveredPrice] = useState<number | null>(null);
 
   // On-chain FX rate (USD → AED)

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type { TimeRange } from '@/components/charts/timeframe-selector';
@@ -17,8 +17,17 @@ interface UsePriceChartReturn {
   setRange: (range: TimeRange) => void;
 }
 
-export function usePriceChart(assetId: string | null): UsePriceChartReturn {
-  const [range, setRange] = useState<TimeRange>('24h');
+export function usePriceChart(assetId: string | null, defaultRange: TimeRange = '24h'): UsePriceChartReturn {
+  const [range, setRange] = useState<TimeRange>(defaultRange);
+  const prevAssetId = useRef(assetId);
+
+  // Reset range to default when asset changes
+  useEffect(() => {
+    if (assetId !== prevAssetId.current) {
+      prevAssetId.current = assetId;
+      setRange(defaultRange);
+    }
+  }, [assetId, defaultRange]);
 
   const { data: historicalData, isLoading, error } = useQuery({
     queryKey: ['price-chart', assetId, range],
