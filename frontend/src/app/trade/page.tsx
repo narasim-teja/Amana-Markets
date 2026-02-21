@@ -61,6 +61,8 @@ import { Fuel } from 'lucide-react';
 type TradeMode = 'buy' | 'sell';
 type GasMode = 'standard' | 'sponsored' | 'erc20';
 
+const ERC20_PAYMASTER: `0x${string}` = '0x21A223F0efD59757750c229B77C551D3fC7b04C0';
+
 // Featured assets appear first: Gold, Silver, Crude Oil (WTI)
 const FEATURED_SYMBOLS = ['XAU', 'XAG', 'WTI'];
 
@@ -304,6 +306,28 @@ export default function TradePage() {
           chain: adiTestnet,
           transport: http(),
         });
+
+        // ERC20 gas mode: smart account must approve the ERC20 paymaster to
+        // spend DDSC for gas fees. This one-time approval uses native
+        // sponsorship (can't pay DDSC gas before paymaster is approved).
+        if (gasMode === 'erc20') {
+          const pmAllowance = (await publicClient.readContract({
+            address: CONTRACTS.MockDirham.address,
+            abi: CONTRACTS.MockDirham.abi,
+            functionName: 'allowance',
+            args: [allowanceAddress, ERC20_PAYMASTER],
+          })) as bigint;
+
+          if (pmAllowance < maxUint256 / BigInt(2)) {
+            toast.info('One-time: approving DDSC for gas payments...');
+            await executeSponsoredNative({
+              address: CONTRACTS.MockDirham.address,
+              abi: CONTRACTS.MockDirham.abi,
+              functionName: 'approve',
+              args: [ERC20_PAYMASTER, maxUint256],
+            });
+          }
+        }
 
         const allowance = (await publicClient.readContract({
           address: CONTRACTS.MockDirham.address,
