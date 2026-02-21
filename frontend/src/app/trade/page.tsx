@@ -740,36 +740,56 @@ export default function TradePage() {
                 </div>
               </div>
 
-              {/* Quote Details */}
+              {/* Order Summary */}
               {amount && parseFloat(amount) > 0 && outputFormatted && (
                 <div className="bg-dark-900/60 rounded-xl p-3 space-y-2 text-sm">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Order Summary
+                  </span>
+
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Rate</span>
+                    <span className="text-muted-foreground">
+                      {mode === 'buy' ? 'Est. Quantity' : 'Sell Quantity'}
+                    </span>
                     <span className="font-mono text-xs text-foreground">
-                      1 {selectedAsset?.tokenSymbol} ={' '}
+                      {mode === 'buy' ? outputFormatted : parseFloat(amount).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}{' '}
+                      {selectedAsset?.tokenSymbol}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Market Price</span>
+                    <span className="font-mono text-xs text-foreground">
                       {chartPrice.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{' '}
-                      DDSC
+                      DDSC / {selectedAsset?.tokenSymbol}
                     </span>
                   </div>
-                  {quote.spreadBps > BigInt(0) && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Spread</span>
-                      <span className="font-mono text-xs text-foreground">
-                        {(Number(quote.spreadBps) / 100).toFixed(2)}%
-                      </span>
-                    </div>
-                  )}
+
                   {quote.fee > BigInt(0) && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Fee</span>
+                      <span className="text-muted-foreground">Trading Fee ({(Number(quote.spreadBps) / 100).toFixed(2)}%)</span>
                       <span className="font-mono text-xs text-foreground">
                         {parseFloat(formatUnits(quote.fee, 6)).toFixed(2)} DDSC
                       </span>
                     </div>
                   )}
+
+                  <div className="h-px bg-dark-700" />
+
+                  <div className="flex justify-between">
+                    <span className="text-xs font-medium text-foreground">
+                      {mode === 'buy' ? 'Total Cost' : 'Net Proceeds'}
+                    </span>
+                    <span className="font-mono text-xs font-semibold text-foreground">
+                      {mode === 'buy'
+                        ? parseFloat(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : outputFormatted}{' '}
+                      DDSC
+                    </span>
+                  </div>
                 </div>
               )}
 

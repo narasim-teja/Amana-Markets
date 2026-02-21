@@ -30,11 +30,21 @@ app.get('/volume', (c) => {
 
 // GET /analytics/fees - Fee collection stats
 app.get('/fees', async (c) => {
-  const totalFees = await publicClient.readContract({
-    address: CONTRACTS.TradingEngine.address,
-    abi: CONTRACTS.TradingEngine.abi,
-    functionName: 'totalFeesCollected'
-  }) as bigint;
+  let totalFees = BigInt(0);
+  try {
+    totalFees = await publicClient.readContract({
+      address: CONTRACTS.TradingEngine.address,
+      abi: CONTRACTS.TradingEngine.abi,
+      functionName: 'totalFeesCollected'
+    }) as bigint;
+  } catch (err) {
+    console.error('Failed to read totalFeesCollected from contract:', err);
+    // Fallback: sum from indexed trades
+    const row = db.query(
+      `SELECT COALESCE(SUM(CAST(fee AS INTEGER)), 0) as total FROM trades`
+    ).get() as { total: number };
+    totalFees = BigInt(row.total);
+  }
 
   const feesByAsset = db.query(`
     SELECT
